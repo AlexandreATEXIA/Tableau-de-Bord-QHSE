@@ -235,7 +235,7 @@ export default function ObjectifsQHSE() {
     const real = {};
     try {
       // Accidents
-      const { data: acc } = await supabase.from('securite_accidents').select('type_evenement, nb_jours_arret');
+      const { data: acc } = await supabase.from('securite_accidents').select('type_evenement, jours_perdus');
       const atArret = (acc||[]).filter(a => a.type_evenement === 'Accident avec arrêt').length;
       const totalH = 50 * 1607;
       real.accidents_arret = atArret;

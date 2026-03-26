@@ -10,12 +10,46 @@ import {
 const MAPPINGS = {
   DUERP: {
     table: 'registre_duerp', label: 'Registre DUERP', color: '#F59E0B',
-    colonnes: { 'Date M.A.J':'date_maj','Unité de Travail':'unite_travail','Danger identifié':'danger','Risque encouru':'risque','Gravité (1-4)':'gravite','Probabilité (1-4)':'probabilite','Criticité (auto)':'criticite','Action préventive':'action_preventive' },
+    colonnes: {
+      'Date M.A.J':'date_maj',
+      'Famille de risque':'famille_risque',
+      'Unité de Travail':'unite_travail',
+      'Danger identifié':'danger',
+      'Événement déclencheur':'evenement_declencheur',
+      'Risque encouru':'risque',
+      'Dommage potentiel':'dommage_potentiel',
+      'Personnes exposées':'personnes_exposees',
+      'Gravité (1-4)':'gravite',
+      'Probabilité (1-4)':'probabilite',
+      'Mesure EPC (description)':'mesures_epc',
+      'Mesure Organisation (description)':'mesures_orga',
+      'Mesure EPI (description)':'mesures_epi',
+      'Action préventive':'action_preventive',
+      'Pilote':'pilote',
+    },
     requis: ['Danger identifié'],
+    // Colonnes booléennes à dériver de la présence de texte
+    boolFromText: { mesures_epc:'a_mesure_epc', mesures_orga:'a_mesure_orga', mesures_epi:'a_mesure_epi' },
   },
   Plan_Actions: {
     table: 'plan_actions', label: "Plan d'Actions", color: '#3B82F6',
-    colonnes: { 'Origine':'origine','Domaine':'domaine',"Description de l'action":'action','Pilote':'pilote','Échéance':'echeance','Priorité':'priorite','Statut':'statut' },
+    colonnes: {
+      'Origine':'origine',
+      'Domaine':'domaine',
+      "Type d'action":'type_action',
+      "Description de l'action":'action',
+      'Cause racine':'cause_racine',
+      'Référence source':'reference_source',
+      'Pilote':'pilote',
+      'Échéance':'echeance',
+      'Date cible révisée':'date_cible_revisee',
+      'Avancement (%)':'avancement_pct',
+      'Priorité':'priorite',
+      'Coût estimé (€)':'cout_estime',
+      'Coût réel (€)':'cout_reel',
+      'Statut':'statut',
+      'Résultat efficacité':'resultat_efficacite',
+    },
     requis: ["Description de l'action"],
   },
   Habilitations: {
@@ -62,20 +96,28 @@ function formatDate(val) {
   return String(val);
 }
 
+const DATE_COLS  = new Set(['obtention','echeance','date_debut','date_fin','date_cible_revisee','date_verification_efficacite']);
+const NUM_COLS   = new Set(['gravite','probabilite','criticite','criticite_resid','coefficient_reducteur','jours_perdus','validiteAns','duree_heures','cout','cout_estime','cout_reel','quantite','avancement_pct','nombre_reports']);
+
 function transformRow(row, mapping) {
   const result = {};
   for (const [excelCol, supaCol] of Object.entries(mapping.colonnes)) {
     let val = row[excelCol];
     if (val === undefined || val === null || val === '') continue;
-    if (supaCol.includes('date') || ['obtention','echeance','date_debut','date_fin'].includes(supaCol)) {
+    if (supaCol.includes('date') || DATE_COLS.has(supaCol)) {
       val = formatDate(val);
-    }
-    if (['gravite','probabilite','criticite','jours_perdus','validiteAns','duree_heures','cout','quantite'].includes(supaCol)) {
+    } else if (NUM_COLS.has(supaCol)) {
       val = parseFloat(String(val).replace(',','.')) || 0;
     }
     result[supaCol] = val;
   }
-  // Calculer criticité auto pour DUERP
+  // Dériver les booléens EPC/ORG/EPI depuis la présence de texte
+  if (mapping.boolFromText) {
+    for (const [textCol, boolCol] of Object.entries(mapping.boolFromText)) {
+      if (result[textCol]) result[boolCol] = true;
+    }
+  }
+  // Calculer criticité initiale auto pour DUERP (CI = G × F)
   if (result.gravite && result.probabilite && !result.criticite) {
     result.criticite = result.gravite * result.probabilite;
   }
@@ -176,6 +218,19 @@ export default function ImportExcel() {
 
   const reset = () => { setFichier(null); setApercu(null); setValid({}); setResultats(null); setEtape('upload'); setProg(0); };
 
+  const telechargerTemplate = async () => {
+    const XLSX = await loadXLSX();
+    const wb = XLSX.utils.book_new();
+    for (const [sheetName, mapping] of Object.entries(MAPPINGS)) {
+      const headers = Object.keys(mapping.colonnes);
+      const ws = XLSX.utils.aoa_to_sheet([headers]);
+      // Largeur automatique
+      ws['!cols'] = headers.map(() => ({ wch: 22 }));
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+    XLSX.writeFile(wb, 'SMI_Templates_Import.xlsx');
+  };
+
   const handleDrop = (e) => {
     e.preventDefault(); setDragging(false);
     const f = e.dataTransfer.files[0];
@@ -197,9 +252,9 @@ export default function ImportExcel() {
           </h2>
           <p className="page-subtitle">Importez vos données QHSE depuis un fichier Excel vers Supabase</p>
         </div>
-        <a href="#" onClick={e => { e.preventDefault(); alert('Téléchargez le fichier SMI_Templates_Import.xlsx depuis les fichiers générés précédemment.'); }} className="btn-secondary" style={{textDecoration:'none'}}>
+        <button onClick={telechargerTemplate} className="btn-secondary">
           <Download size={15}/> Templates Excel
-        </a>
+        </button>
       </header>
 
       {/* ── Étapes ───────────────────────────────────────────────────────── */}
@@ -224,9 +279,9 @@ export default function ImportExcel() {
           <span style={{fontSize:12,color:p.text3}}>Mode :</span>
           <button onClick={()=>setMode(!modeUpdate)}
             style={{fontSize:12,fontWeight:600,padding:'4px 12px',borderRadius:100,border:'1px solid',cursor:'pointer',transition:'all 0.15s',
-              background:modeUpdate?'rgba(245,158,11,0.15)':'rgba(255,255,255,0.04)',
-              borderColor:modeUpdate?'rgba(245,158,11,0.4)':'rgba(255,255,255,0.08)',
-              color:modeUpdate?'#FCD34D':'#64748B'}}>
+              background:modeUpdate?'rgba(245,158,11,0.15)':p.whiteFaint2,
+              borderColor:modeUpdate?'rgba(245,158,11,0.4)':p.border,
+              color:modeUpdate?'#FCD34D':p.text3}}>
             {modeUpdate ? '⚡ Mise à jour (upsert)' : '➕ Ajout uniquement'}
           </button>
         </div>
@@ -238,7 +293,7 @@ export default function ImportExcel() {
           <div className="lg:col-span-2">
             <div
               className="glass-panel"
-              style={{ border:`2px dashed ${dragging?'rgba(59,130,246,0.6)':'rgba(255,255,255,0.1)'}`, background:dragging?'rgba(59,130,246,0.04)':undefined, transition:'all 0.2s', padding:'52px 36px', display:'flex', flexDirection:'column', alignItems:'center', cursor:'pointer' }}
+              style={{ border:`2px dashed ${dragging?'rgba(59,130,246,0.6)':p.border}`, background:dragging?'rgba(59,130,246,0.04)':undefined, transition:'all 0.2s', padding:'52px 36px', display:'flex', flexDirection:'column', alignItems:'center', cursor:'pointer' }}
               onDragOver={e=>{e.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={handleDrop}
               onClick={()=>fileRef.current?.click()}
             >
@@ -316,7 +371,7 @@ export default function ImportExcel() {
               {apercu.map(a => (
                 <div key={a.sheetName} style={{background:`${a.color}10`,border:`1px solid ${a.color}30`,borderRadius:10,padding:'10px 14px'}}>
                   <p style={{fontSize:11,color:a.color,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>{a.label}</p>
-                  <p style={{fontSize:22,fontWeight:900,color:'white'}}>{a.count}</p>
+                  <p style={{fontSize:22,fontWeight:900,color:p.text1}}>{a.count}</p>
                   {a.ignored > 0 && <p style={{fontSize:10,color:'#F59E0B',marginTop:2}}>{a.ignored} ligne(s) ignorée(s)</p>}
                 </div>
               ))}
@@ -362,7 +417,7 @@ export default function ImportExcel() {
                 {label:'Lignes importées', val:resultats.filter(r=>r.ok).reduce((s,r)=>s+r.count,0), color:'#3B82F6'},
                 {label:'Erreurs', val:resultats.filter(r=>!r.ok).length, color:resultats.some(r=>!r.ok)?'#EF4444':'#10B981'},
               ].map((k,i) => (
-                <div key={i} style={{background:p.whiteFaint2,border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,padding:'14px',textAlign:'center'}}>
+                <div key={i} style={{background:p.whiteFaint2,border:`1px solid ${p.border}`,borderRadius:10,padding:'14px',textAlign:'center'}}>
                   <p style={{fontSize:10,color:p.text3,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:6}}>{k.label}</p>
                   <p style={{fontSize:28,fontWeight:900,color:k.color}}>{k.val}</p>
                 </div>

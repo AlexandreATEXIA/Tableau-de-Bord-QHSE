@@ -20,6 +20,27 @@ function diffJours(dateStr) {
 
 serve(async (req) => {
   try {
+    // Lire le corps de la requête pour récupérer les destinataires configurés
+    let emailsDest: string[] = [];
+    try {
+      const body = await req.json();
+      if (Array.isArray(body?.emails_dest) && body.emails_dest.length > 0) {
+        emailsDest = body.emails_dest;
+      }
+    } catch { /* corps vide ou non-JSON, on continue */ }
+
+    // Fallback sur la variable d'environnement si aucun destinataire dans la requête
+    if (emailsDest.length === 0 && EMAIL_DEST) {
+      emailsDest = [EMAIL_DEST];
+    }
+
+    if (emailsDest.length === 0) {
+      return new Response(JSON.stringify({ error: "Aucun destinataire configuré. Ajoutez au moins un email dans la configuration." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const [r1, r2] = await Promise.all([
       supabase.from("plan_actions").select("id,action,pilote,echeance,statut"),
       supabase.from("habilitations").select("id,employe,domaine,obtention,validiteAns"),
@@ -130,7 +151,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from:    "QHSE Dashboard <alertes@resend.dev>",
-        to:      [EMAIL_DEST],
+        to:      emailsDest,
         subject: `SMI Dashboard — ${total} alerte${total > 1 ? "s" : ""} QHSE du ${date}`,
         html:    html,
       }),
@@ -138,7 +159,14 @@ serve(async (req) => {
 
     const result = await res.json();
 
-    return new Response(JSON.stringify({ success: true, alertes: total, resend: result }), {
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: `Erreur API Resend (${res.status}) : ${result?.message || JSON.stringify(result)}` }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, alertes: total, destinataires: emailsDest.length }), {
       headers: { "Content-Type": "application/json" },
     });
 

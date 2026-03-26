@@ -136,7 +136,7 @@ export default function NotificationsEmail() {
       {onglet==='config' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-up">
           <div className="glass-panel p-5">
-            <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Mail size={16} className="text-blue-400"/> Destinataires</h3>
+            <h3 className="font-bold mb-4 flex items-center gap-2"><Mail size={16} className="text-blue-400"/> Destinataires</h3>
             <div className="flex gap-2 mb-4">
               <input type="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ajouterEmail()} placeholder="email@entreprise.com" className="input-modern flex-1" style={{padding:'8px 12px',fontSize:13}}/>
               <button onClick={ajouterEmail} className="btn-primary" style={{padding:'8px 14px',fontSize:13}}><Plus size={14}/> Ajouter</button>
@@ -144,7 +144,7 @@ export default function NotificationsEmail() {
             {config.destinataires.length===0 ? (
               <p className="text-slate-500 text-sm italic text-center py-4">Aucun destinataire</p>
             ) : config.destinataires.map((e,i) => (
-              <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:p.whiteFaint2,border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,padding:'8px 12px',marginBottom:6}}>
+              <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:p.whiteFaint2,border:'1px solid '+p.border,borderRadius:8,padding:'8px 12px',marginBottom:6}}>
                 <div className="flex items-center gap-2">
                   <div style={{width:26,height:26,background:'linear-gradient(135deg,#3B82F6,#06B6D4)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:'white'}}>{e.charAt(0).toUpperCase()}</div>
                   <span style={{fontSize:13,color:p.text2}}>{e}</span>
@@ -156,12 +156,12 @@ export default function NotificationsEmail() {
 
           <div className="space-y-4">
             <div className="glass-panel p-5">
-              <h3 className="text-white font-bold mb-3 flex items-center gap-2"><Clock size={16} className="text-amber-400"/> Fréquence</h3>
+              <h3 className="font-bold mb-3 flex items-center gap-2"><Clock size={16} className="text-amber-400"/> Fréquence</h3>
               {FREQUENCES.map(f => (
                 <button key={f} onClick={()=>save({...config,frequence:f})}
                   style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:8,border:'1px solid',cursor:'pointer',transition:'all 0.15s',marginBottom:6,
-                    background:config.frequence===f?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',
-                    borderColor:config.frequence===f?'rgba(59,130,246,0.35)':'rgba(255,255,255,0.07)'}}>
+                    background:config.frequence===f?'rgba(59,130,246,0.12)':p.whiteFaint2,
+                    borderColor:config.frequence===f?'rgba(59,130,246,0.35)':p.border}}>
                   <div style={{width:14,height:14,borderRadius:'50%',border:`2px solid ${config.frequence===f?'#3B82F6':'#334155'}`,background:config.frequence===f?'#3B82F6':'transparent'}}/>
                   <span style={{fontSize:13,color:config.frequence===f?'#60A5FA':'#94A3B8',fontWeight:config.frequence===f?600:400}}>{f}</span>
                 </button>
@@ -169,7 +169,7 @@ export default function NotificationsEmail() {
             </div>
 
             <div className="glass-panel p-5">
-              <h3 className="text-white font-bold mb-3 flex items-center gap-2"><Bell size={16} className="text-purple-400"/> Modules inclus</h3>
+              <h3 className="font-bold mb-3 flex items-center gap-2"><Bell size={16} className="text-purple-400"/> Modules inclus</h3>
               {[
                 {key:'actions',      label:'Plan d\'actions'},
                 {key:'habilitations',label:'Habilitations'},
@@ -180,7 +180,7 @@ export default function NotificationsEmail() {
                 <div key={m.key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
                   <span style={{fontSize:13,color:p.text2}}>{m.label}</span>
                   <button onClick={()=>{const c={...config,modules:{...config.modules,[m.key]:!config.modules[m.key]}};save(c);}}
-                    style={{width:40,height:22,borderRadius:100,border:'none',cursor:'pointer',transition:'all 0.2s',background:config.modules[m.key]?'#3B82F6':'rgba(255,255,255,0.1)',position:'relative'}}>
+                    style={{width:40,height:22,borderRadius:100,border:'none',cursor:'pointer',transition:'all 0.2s',background:config.modules[m.key]?'#3B82F6':p.whiteFaint3,position:'relative'}}>
                     <div style={{width:16,height:16,borderRadius:'50%',background:'white',position:'absolute',top:3,left:config.modules[m.key]?21:3,transition:'left 0.2s'}}/>
                   </button>
                 </div>
@@ -190,7 +190,7 @@ export default function NotificationsEmail() {
 
           <div className="glass-panel p-5 lg:col-span-2">
             <button onClick={()=>setShowS(!showSeuils)} className="w-full flex items-center justify-between">
-              <h3 className="text-white font-bold flex items-center gap-2"><Settings size={15} className="text-slate-400"/> Seuils de déclenchement</h3>
+              <h3 className="font-bold flex items-center gap-2"><Settings size={15} className="text-slate-400"/> Seuils de déclenchement</h3>
               <span style={{fontSize:11,color:p.text4}}>{showSeuils?'▲':'▼'}</span>
             </button>
             {showSeuils && (
@@ -217,14 +217,14 @@ export default function NotificationsEmail() {
       {onglet==='apercu' && (
         <div className="space-y-3 animate-fade-up">
           {alertes===null ? (
-            <div className="glass-panel p-10 text-center"><Bell size={32} className="text-blue-400 mx-auto mb-3"/><p className="text-white font-bold mb-2">Cliquez sur "Vérifier les alertes"</p><p className="text-slate-400 text-sm">pour voir ce qui sera inclus dans le prochain email</p><button onClick={verifier} disabled={loadChk} className="btn-primary mt-4">{loadChk?<Loader size={14} className="animate-spin"/>:<Bell size={14}/>} Vérifier</button></div>
+            <div className="glass-panel p-10 text-center"><Bell size={32} className="text-blue-400 mx-auto mb-3"/><p className="font-bold mb-2">Cliquez sur "Vérifier les alertes"</p><p className="text-slate-400 text-sm">pour voir ce qui sera inclus dans le prochain email</p><button onClick={verifier} disabled={loadChk} className="btn-primary mt-4">{loadChk?<Loader size={14} className="animate-spin"/>:<Bell size={14}/>} Vérifier</button></div>
           ) : total===0 ? (
             <div className="glass-panel p-10 text-center"><CheckCircle size={32} className="text-emerald-400 mx-auto mb-3"/><p className="text-emerald-400 font-bold text-lg">Aucune alerte active !</p><p className="text-slate-400 text-sm mt-1">Tous les indicateurs sont au vert</p></div>
           ) : (
             <>
               <div className="glass-panel p-4 flex items-center gap-3 border border-amber-500/20">
                 <AlertTriangle size={16} className="text-amber-400 shrink-0"/>
-                <p className="text-white font-bold">{total} alerte{total>1?'s':''} détectée{total>1?'s':''} — seront incluses dans l'email</p>
+                <p className="font-bold">{total} alerte{total>1?'s':''} détectée{total>1?'s':''} — seront incluses dans l'email</p>
               </div>
               {[
                 {list:alertes.actRetard,  label:'Actions PDCA en retard',       level:'red',   fields:['action','pilote']},
@@ -259,7 +259,7 @@ export default function NotificationsEmail() {
             <div className="glass-panel p-10 text-center text-slate-400">Aucun email envoyé pour l'instant.</div>
           ) : (
             <div className="glass-panel overflow-hidden">
-              <div className="p-4 border-b border-white/8"><h3 className="text-white font-bold text-sm">Historique des envois</h3></div>
+              <div className="p-4 border-b border-white/8"><h3 className="font-bold text-sm">Historique des envois</h3></div>
               <table className="table-modern">
                 <thead><tr><th>Date et heure</th><th>Destinataires</th><th style={{textAlign:'center'}}>Alertes</th><th style={{textAlign:'center'}}>Statut</th></tr></thead>
                 <tbody>
