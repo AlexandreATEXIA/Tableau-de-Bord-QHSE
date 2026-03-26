@@ -207,10 +207,10 @@ export default function KPIsSecurite() {
           <p className="page-subtitle">Taux de Fréquence, Taux de Gravité et conformité — calculés en temps réel</p>
         </div>
         <div className="flex items-center gap-3">
-          <div style={{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'7px 14px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,background:p.whiteFaint2,border:'1px solid '+p.border,borderRadius:10,padding:'7px 14px'}}>
             <label style={{fontSize:12,color:p.text2,fontWeight:600}}>Effectif :</label>
             <input type="number" min="1" value={effectif} onChange={e=>setEffectif(Number(e.target.value))}
-              style={{width:52,background:'transparent',color:'white',fontSize:14,fontWeight:800,outline:'none',textAlign:'center',border:'none',fontFamily:'inherit'}}/>
+              style={{width:52,background:'transparent',color:p.text1,fontSize:14,fontWeight:800,outline:'none',textAlign:'center',border:'none',fontFamily:'inherit'}}/>
             <span style={{fontSize:11,color:p.text4}}>pers.</span>
           </div>
           <button onClick={() => { setObjEdit(objectifs); setShowObj(true); }} className="btn-secondary"><Settings size={15}/> Objectifs</button>
