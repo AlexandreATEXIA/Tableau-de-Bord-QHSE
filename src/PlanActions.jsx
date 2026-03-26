@@ -139,6 +139,7 @@ export default function PlanActions() {
   const [filtreType, setFT]         = useState('Tous');
   const [filtreRetard, setFR]       = useState(false);
   const [form, setForm]             = useState(() => mkForm(DOMAINES_DEFAULT, ORIGINES));
+  const [saveError, setSaveError]   = useState('');
   const actionsRef                  = useRef(actions);
   useEffect(() => { actionsRef.current = actions; }, [actions]);
 
@@ -185,9 +186,44 @@ export default function PlanActions() {
   /* ── Ajout ──────────────────────────────────────────────────────────────── */
   const ajouterAction = async () => {
     if (!form.action.trim()) return;
-    const toInsert = { ...form, avancement_pct: Number(form.avancement_pct || 0), cout_estime: form.cout_estime || null, cout_reel: form.cout_reel || null, echeance: form.echeance || null, date_cible_revisee: form.date_cible_revisee || null, date_verification_efficacite: form.date_verification_efficacite || null };
-    const { data } = await supabase.from('plan_actions').insert([toInsert]).select();
-    if (data) {
+    setSaveError('');
+    // Seuls les champs garantis en base (colonnes originales + nouvelles si migration faite)
+    const toInsert = {
+      origine: form.origine,
+      domaine: form.domaine,
+      action: form.action,
+      pilote: form.pilote,
+      echeance: form.echeance || null,
+      priorite: form.priorite,
+      statut: form.statut,
+      commentaire: form.commentaire,
+    };
+    // Champs issus de la migration — ajoutés si disponibles
+    const extraFields = {
+      reference_source: form.reference_source || null,
+      type_action: form.type_action || null,
+      cause_racine: form.cause_racine || null,
+      date_cible_revisee: form.date_cible_revisee || null,
+      avancement_pct: Number(form.avancement_pct || 0),
+      cout_estime: form.cout_estime || null,
+      cout_reel: form.cout_reel || null,
+      date_verification_efficacite: form.date_verification_efficacite || null,
+      resultat_efficacite: form.resultat_efficacite || null,
+    };
+    // Tenter avec tous les champs d'abord
+    let { data, error } = await supabase.from('plan_actions').insert([{ ...toInsert, ...extraFields }]).select();
+    // Si erreur de colonne manquante → réessayer avec les champs de base uniquement
+    if (error && (error.message.includes('column') || error.code === '42703')) {
+      const res2 = await supabase.from('plan_actions').insert([toInsert]).select();
+      data  = res2.data;
+      error = res2.error;
+      if (!error) setSaveError('⚠️ Action enregistrée mais certains champs ignorés (migration SQL non jouée). Lancez le script SQL en bas de page.');
+    }
+    if (error) {
+      setSaveError(`Erreur : ${error.message}`);
+      return;
+    }
+    if (data?.[0]) {
       setActions(prev => [...prev, data[0]]);
       setShowForm(false);
       setForm(mkForm(listeDomaines, ORIGINES));
@@ -410,8 +446,14 @@ export default function PlanActions() {
             </div>
           </div>
 
+          {saveError && (
+            <div className="alert-banner alert-red mb-3">
+              <AlertTriangle size={15} className="shrink-0"/>
+              <p style={{ fontSize: 13 }}>{saveError}</p>
+            </div>
+          )}
           <div className="flex gap-3">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Annuler</button>
+            <button onClick={() => { setShowForm(false); setSaveError(''); }} className="btn-secondary">Annuler</button>
             <button onClick={ajouterAction} disabled={!form.action.trim()} className="btn-primary">
               <Save size={16}/> Enregistrer l'action
             </button>

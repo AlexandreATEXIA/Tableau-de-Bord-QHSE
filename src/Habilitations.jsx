@@ -200,9 +200,9 @@ export default function Habilitations() {
                 {VALIDITES.map(v => (
                   <button key={v} onClick={() => setForm({...form, validiteAns: v})}
                     style={{ flex:1, padding:'8px 4px', borderRadius:8, border:'1px solid', cursor:'pointer', fontSize:12, fontWeight:700, transition:'all 0.15s',
-                      background: form.validiteAns === v ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
-                      borderColor: form.validiteAns === v ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)',
-                      color: form.validiteAns === v ? '#60A5FA' : '#64748B' }}>
+                      background: form.validiteAns === v ? 'rgba(59,130,246,0.2)' : p.whiteFaint2,
+                      borderColor: form.validiteAns === v ? 'rgba(59,130,246,0.4)' : p.border,
+                      color: form.validiteAns === v ? '#60A5FA' : p.text3 }}>
                     {v}an{v > 1 ? 's' : ''}
                   </button>
                 ))}
@@ -233,9 +233,9 @@ export default function Habilitations() {
         {['Tous','Périmées','< 30 jours','Valides'].map(s => {
           const c = s === 'Périmées' ? '#EF4444' : s === '< 30 jours' ? '#F59E0B' : s === 'Valides' ? '#10B981' : '#3B82F6';
           return <button key={s} onClick={() => setFS(s)} style={{ fontSize:11, fontWeight:600, padding:'4px 12px', borderRadius:100, border:'1px solid', cursor:'pointer', transition:'all 0.12s',
-            background: filtreStatut === s ? `${c}20` : 'rgba(255,255,255,0.04)',
-            borderColor: filtreStatut === s ? `${c}50` : 'rgba(255,255,255,0.08)',
-            color: filtreStatut === s ? c : '#64748B' }}>{s}</button>;
+            background: filtreStatut === s ? `${c}20` : p.whiteFaint2,
+            borderColor: filtreStatut === s ? `${c}50` : p.border,
+            color: filtreStatut === s ? c : p.text3 }}>{s}</button>;
         })}
         {(filtreEmploye !== 'Tous' || filtreStatut !== 'Tous') && (
           <button onClick={() => { setFE('Tous'); setFS('Tous'); }} className="text-slate-500 hover:text-white text-xs flex items-center gap-1 ml-auto"><X size={12}/> Reset</button>
@@ -305,9 +305,9 @@ export default function Habilitations() {
                             {VALIDITES.map(v => (
                               <button key={v} onClick={() => { updateRow(row.id,'validiteAns',v); setTimeout(() => saveRow({...row, validiteAns:v}), 0); }}
                                 style={{ width:28, height:28, borderRadius:6, border:'1px solid', cursor:'pointer', fontSize:10, fontWeight:700, transition:'all 0.12s',
-                                  background: Number(row.validiteAns)===v ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
-                                  borderColor: Number(row.validiteAns)===v ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.06)',
-                                  color: Number(row.validiteAns)===v ? '#60A5FA' : '#475569' }}>{v}</button>
+                                  background: Number(row.validiteAns)===v ? 'rgba(59,130,246,0.2)' : p.whiteFaint2,
+                                  borderColor: Number(row.validiteAns)===v ? 'rgba(59,130,246,0.4)' : p.border,
+                                  color: Number(row.validiteAns)===v ? '#60A5FA' : p.text3 }}>{v}</button>
                             ))}
                           </div>
                         </td>

@@ -108,6 +108,7 @@ export default function RegistreDUERP() {
   const [filtreNiveau, setFiltreNiveau] = useState('Tous');
   const [listeUT, setListeUT]         = useState(LISTE_UT_DEFAULT);
   const [form, setForm]               = useState({ ...FORM_INIT });
+  const [saveError, setSaveError]     = useState('');
   const risquesRef                    = useRef(risques);
   useEffect(() => { risquesRef.current = risques; }, [risques]);
 
@@ -172,13 +173,55 @@ export default function RegistreDUERP() {
   /* ── Ajout d'un risque ──────────────────────────────────────────────────── */
   const ajouterRisque = async () => {
     if (!form.danger.trim()) return;
+    setSaveError('');
     const ci    = Number(form.gravite) * Number(form.probabilite);
     const cr    = calcCR(form.gravite, form.probabilite, form.a_mesure_epc, form.a_mesure_orga, form.a_mesure_epi);
     const coeff = getCoefficient(form.a_mesure_epc, form.a_mesure_orga, form.a_mesure_epi);
-    const { data } = await supabase.from('registre_duerp')
-      .insert([{ ...form, criticite: ci, criticite_resid: cr, coefficient_reducteur: coeff }])
-      .select();
-    if (data) {
+
+    // Champs de base (colonnes originales)
+    const baseFields = {
+      unite_travail: form.unite_travail,
+      danger: form.danger,
+      risque: form.risque,
+      gravite: form.gravite,
+      probabilite: form.probabilite,
+      criticite: ci,
+      action_preventive: form.action_preventive,
+      pilote: form.pilote,
+      date_maj: form.date_maj || null,
+    };
+    // Champs issus de la migration
+    const extraFields = {
+      famille_risque: form.famille_risque || null,
+      evenement_declencheur: form.evenement_declencheur || null,
+      dommage_potentiel: form.dommage_potentiel || null,
+      personnes_exposees: form.personnes_exposees || null,
+      a_mesure_epc: form.a_mesure_epc,
+      mesures_epc: form.mesures_epc || null,
+      a_mesure_orga: form.a_mesure_orga,
+      mesures_orga: form.mesures_orga || null,
+      a_mesure_epi: form.a_mesure_epi,
+      mesures_epi: form.mesures_epi || null,
+      criticite_resid: cr,
+      coefficient_reducteur: coeff,
+    };
+
+    // Tenter avec tous les champs
+    let { data, error } = await supabase.from('registre_duerp')
+      .insert([{ ...baseFields, ...extraFields }]).select();
+
+    // Fallback si colonnes manquantes
+    if (error && (error.message.includes('column') || error.code === '42703')) {
+      const res2 = await supabase.from('registre_duerp').insert([baseFields]).select();
+      data  = res2.data;
+      error = res2.error;
+      if (!error) setSaveError('⚠️ Risque enregistré mais certains champs ignorés (migration SQL non jouée). Lancez le script SQL en bas de page.');
+    }
+    if (error) {
+      setSaveError(`Erreur : ${error.message}`);
+      return;
+    }
+    if (data?.[0]) {
       setRisques(prev => [...prev, data[0]].sort((a, b) => (b.criticite_resid || b.criticite || 1) - (a.criticite_resid || a.criticite || 1)));
       setShowForm(false);
       setForm({ ...FORM_INIT, unite_travail: listeUT[0] });
@@ -527,8 +570,14 @@ export default function RegistreDUERP() {
             </div>
           </div>
 
+          {saveError && (
+            <div className="alert-banner alert-red mb-3">
+              <AlertOctagon size={15} className="shrink-0"/>
+              <p style={{ fontSize: 13 }}>{saveError}</p>
+            </div>
+          )}
           <div className="flex gap-3">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Annuler</button>
+            <button onClick={() => { setShowForm(false); setSaveError(''); }} className="btn-secondary">Annuler</button>
             <button onClick={ajouterRisque} disabled={!form.danger.trim()} className="btn-primary" style={{ background: '#F59E0B', boxShadow: '0 0 16px rgba(245,158,11,0.3)' }}>
               <Save size={16}/> Enregistrer le risque
             </button>

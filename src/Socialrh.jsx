@@ -221,7 +221,7 @@ export default function SocialRH() {
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all border-b-2"
             style={subTab === tab.id ? { borderColor: tab.color, color: tab.color } : { borderColor: 'transparent', color: '#64748B' }}>
             {tab.icon}{tab.label}
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 100, background: subTab === tab.id ? `${tab.color}25` : 'rgba(255,255,255,0.06)', color: subTab === tab.id ? tab.color : '#475569' }}>{tab.count}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 100, background: subTab === tab.id ? `${tab.color}25` : p.whiteFaint3, color: subTab === tab.id ? tab.color : p.text3 }}>{tab.count}</span>
           </button>
         ))}
       </div>
@@ -271,7 +271,7 @@ export default function SocialRH() {
                     <div key={i} className="flex items-center gap-3">
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: c.color, flexShrink: 0 }}/>
                       <span className="text-slate-400 text-sm flex-1">{c.contrat}</span>
-                      <div style={{ flex: 2, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                      <div style={{ flex: 2, height: 6, background: p.whiteFaint3, borderRadius: 3 }}>
                         <div style={{ height: '100%', width: `${(c.count / kpiEff.total) * 100}%`, background: c.color, borderRadius: 3, transition: 'width 0.8s ease' }}/>
                       </div>
                       <span className="text-white font-bold text-sm w-6 text-right">{c.count}</span>

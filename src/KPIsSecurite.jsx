@@ -273,7 +273,7 @@ export default function KPIsSecurite() {
           <h3 className="text-white font-bold mb-3 flex items-center gap-2"><Target size={16} className="text-blue-400"/> Atteinte des objectifs</h3>
           <div className="grid grid-cols-2 gap-2">
             {objectifsCheck.map((o,i) => (
-              <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:'rgba(255,255,255,0.03)',borderRadius:8,border:`1px solid ${o.ok?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'}`}}>
+              <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:p.whiteFaint2,borderRadius:8,border:`1px solid ${o.ok?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'}`}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:o.ok?'#10B981':'#F59E0B',flexShrink:0}}/>
                 <span style={{flex:1,fontSize:12,color:p.text2}}>{o.label}</span>
                 <span style={{fontSize:12,fontWeight:700,color:o.ok?'#10B981':'#F59E0B'}}>{o.val}</span>

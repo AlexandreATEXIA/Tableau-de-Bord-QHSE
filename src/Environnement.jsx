@@ -179,7 +179,7 @@ export default function Environnement() {
         ].map((k, i) => (
           <div key={i} className={`kpi-card ${k.color}`}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{k.icon}</div>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: p.whiteFaint3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{k.icon}</div>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">{k.label}</p>
             </div>
             <p className="text-3xl font-black text-white">{k.val}</p>
@@ -281,9 +281,9 @@ export default function Environnement() {
           const color = info?.color || '#3B82F6';
           return (
             <button key={f} onClick={() => setFiltreFlux(f)} style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, border: '1px solid', cursor: 'pointer', transition: 'all 0.12s',
-              background: filtreFlux === f ? `${color}20` : 'rgba(255,255,255,0.04)',
-              borderColor: filtreFlux === f ? `${color}50` : 'rgba(255,255,255,0.08)',
-              color: filtreFlux === f ? color : '#64748B' }}>
+              background: filtreFlux === f ? `${color}20` : p.whiteFaint2,
+              borderColor: filtreFlux === f ? `${color}50` : p.border,
+              color: filtreFlux === f ? color : p.text3 }}>
               {info?.icon && <span style={{ marginRight: 4 }}>{info.icon}</span>}{f}
             </button>
           );
