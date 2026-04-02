@@ -245,6 +245,52 @@ select.input-modern, select.input-dark {
 [data-theme="light"] .border-white\/8  { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/5  { border-color: var(--border) !important; }
 
+/* ─── Responsive grilles ─────────────────────────────────────────────────── */
+.r-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.r-grid-5 { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.r-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.r-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+.r-grid-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+
+/* ─── Navigation bottom sticky (mobile safe area) ────────────────────────── */
+.bottom-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 28px; padding-top: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  position: sticky; bottom: 0;
+  background: var(--bg-page);
+  z-index: 10;
+}
+
+/* ─── Sidebar mobile ─────────────────────────────────────────────────────── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 40; backdrop-filter: blur(4px);
+}
+
+@media (max-width: 768px) {
+  .r-grid-4, .r-grid-5 { grid-template-columns: repeat(2,1fr); }
+  .r-grid-3            { grid-template-columns: repeat(2,1fr); }
+  .r-grid-stats        { grid-template-columns: repeat(2,1fr); }
+  .r-grid-2            { grid-template-columns: 1fr; }
+  .mobile-hidden       { display: none !important; }
+  .mobile-full         { grid-column: 1 / -1 !important; }
+  .sidebar-overlay.open { display: block; }
+  /* Topbar padding gauche réduit sur mobile car on a le hamburger */
+  .hamburger-btn       { display: flex !important; }
+}
+
+@media (min-width: 769px) {
+  /* Sur desktop : hamburger caché, sidebar toujours visible */
+  .hamburger-btn { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  .r-grid-4, .r-grid-5, .r-grid-3 { grid-template-columns: repeat(2,1fr); }
+  .r-grid-stats { grid-template-columns: repeat(2,1fr); }
+}
+
 /* ─── Impression / Export PDF ────────────────────────────────────────────── */
 @media print {
   body { background: white !important; color: black !important; font-family: 'Plus Jakarta Sans', sans-serif; }

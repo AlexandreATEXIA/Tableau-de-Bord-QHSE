@@ -1233,7 +1233,7 @@ export default function AnalyseRisqueChantier() {
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ClipboardList size={16} style={{ color: '#10B981' }} /> Type d'intervention
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+              <div className="r-grid-3">
                 {TYPES_INTERVENTION.map(t => {
                   const active = analyse.typeIntervention === t.value;
                   return (
@@ -1308,7 +1308,7 @@ export default function AnalyseRisqueChantier() {
                 <MapPin size={16} style={{ color: '#8B5CF6' }} /> Environnement du site
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-4)', marginBottom: 14 }}>Plusieurs choix possibles</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
+              <div className="r-grid-5">
                 {ENVIRONNEMENTS_SITE.map(e => {
                   const active = (analyse.environnement || []).includes(e.value);
                   return (
@@ -1333,7 +1333,7 @@ export default function AnalyseRisqueChantier() {
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CloudRain size={16} style={{ color: '#06B6D4' }} /> Conditions météorologiques
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 14 }}>
+              <div className="r-grid-4" style={{ marginBottom: 14 }}>
                 {METEO_OPTIONS.map(m => (
                   <button key={m.value} onClick={() => setAnalyse(a => ({ ...a, meteo: a.meteo === m.value ? '' : m.value }))} style={{
                     padding: '10px 8px', borderRadius: 10, border: `1.5px solid ${analyse.meteo === m.value ? m.color : 'var(--border-2)'}`,
@@ -1505,7 +1505,7 @@ export default function AnalyseRisqueChantier() {
         )}
 
         {/* Navigation bas */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+        <div className="bottom-nav">
           <button onClick={() => step > 1 ? setStep(s => s - 1) : setVue('liste')} style={{
             display: 'flex', alignItems: 'center', gap: 7, padding: '11px 20px',
             background: 'var(--bg-card-2)', border: '1px solid var(--border)', borderRadius: 10,
@@ -1599,7 +1599,7 @@ export default function AnalyseRisqueChantier() {
 
       {/* Stats */}
       {historique.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+        <div className="r-grid-stats">
           {[
             { label: 'Total', val: historique.length, icon: ClipboardList, color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
             { label: 'Risque faible', val: historique.filter(h => getNiveauRisque(calcScore(h.reponses)) === 'faible').length, icon: CheckCircle, color: '#10B981', bg: 'rgba(16,185,129,0.12)' },
