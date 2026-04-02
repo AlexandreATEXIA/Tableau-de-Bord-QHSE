@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShieldAlert, CheckCircle, Leaf, Users,
   FileText, HeartPulse, FileDown, Mail, BarChart2,
   ChevronRight, Target, Calendar, Settings, FileSpreadsheet, BookOpen,
-  PieChart, ClipboardList
+  PieChart, ClipboardList, HardHat
 } from 'lucide-react';
 
 import DashboardComex       from './DashboardComex';
@@ -23,6 +23,7 @@ import Statistiques         from './Statistiques';
 import CalendrierQHSE       from './CalendrierQHSE';
 import ObjectifsQHSE from './ObjectifsQHSE';
 import RevueDirection       from './RevueDirection';
+import AnalyseRisqueChantier from './AnalyseRisqueChantier';
 
 const MENU = [
   {
@@ -35,6 +36,7 @@ const MENU = [
       { id:'env',         label:'Environnement',        icon:Leaf },
       { id:'rh',          label:'Social & RH',          icon:Users },
       { id:'pdca',        label:"Plan d'Actions",       icon:FileText },
+      { id:'analyse',     label:'Analyse Risque',       icon:HardHat,       badge:'NEW', badgeClass:'red' },
       { id:'calendrier',  label:'Calendrier QHSE',      icon:Calendar,      badge:'NEW', badgeClass:'blue' },
       { id:'veille',      label:'Veille Réglementaire', icon:BookOpen,      badge:'NEW', badgeClass:'green' },
     ]
@@ -146,6 +148,7 @@ export default function App() {
             {activeTab === 'env'           && <Environnement />}
             {activeTab === 'rh'            && <SocialRH />}
             {activeTab === 'pdca'          && <PlanActions />}
+            {activeTab === 'analyse'       && <AnalyseRisqueChantier />}
             {activeTab === 'calendrier'    && <CalendrierQHSE />}
             {activeTab === 'veille'        && <VeilleReglementaire />}
             {activeTab === 'revue'         && <RevueDirection />}

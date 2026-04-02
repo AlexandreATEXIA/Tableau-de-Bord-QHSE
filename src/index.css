@@ -92,6 +92,8 @@ body {
 .nav-badge.blue   { background: rgba(59,130,246,0.15); color: var(--blue); }
 .nav-badge.green  { background: rgba(16,185,129,0.15); color: var(--green); }
 .nav-badge.purple { background: rgba(139,92,246,0.15); color: var(--purple); }
+.nav-badge.red    { background: rgba(239,68,68,0.15);  color: var(--red); }
+.nav-badge.amber  { background: rgba(245,158,11,0.15); color: var(--amber); }
 
 /* ─── KPI Cards ──────────────────────────────────────────────────────────── */
 .kpi-card {
@@ -202,6 +204,7 @@ select.input-modern, select.input-dark {
 /* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fadeSlideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes spin { to { transform: rotate(360deg); } }
 .animate-fade-up   { animation:fadeSlideUp 0.35s cubic-bezier(0.4,0,0.2,1) both; }
 .animate-fade-up-1 { animation:fadeSlideUp 0.35s 0.05s cubic-bezier(0.4,0,0.2,1) both; }
 .animate-fade-up-2 { animation:fadeSlideUp 0.35s 0.10s cubic-bezier(0.4,0,0.2,1) both; }
