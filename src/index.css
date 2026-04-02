@@ -244,3 +244,15 @@ select.input-modern, select.input-dark {
 [data-theme="light"] .border-white\/10 { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/8  { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/5  { border-color: var(--border) !important; }
+
+/* ─── Impression / Export PDF ────────────────────────────────────────────── */
+@media print {
+  body { background: white !important; color: black !important; font-family: 'Plus Jakarta Sans', sans-serif; }
+  aside, .nav-item, button:not(.print-keep) { display: none !important; }
+  #print-zone { display: block !important; width: 100%; padding: 20px; }
+  .glass-panel { background: white !important; border: 1px solid #ccc !important; border-radius: 8px; box-shadow: none !important; margin-bottom: 16px; padding: 14px !important; break-inside: avoid; }
+  * { color: black !important; background: transparent !important; border-color: #ddd !important; }
+  img { max-width: 100%; }
+  .no-print { display: none !important; }
+  @page { margin: 15mm; size: A4; }
+}

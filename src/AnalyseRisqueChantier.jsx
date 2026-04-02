@@ -6,7 +6,7 @@ import {
   HardHat, Users, Shield, ClipboardList, Plus, Trash2, Eye,
   Download, RotateCcw, Check, AlertCircle, Info, ChevronDown,
   ChevronUp, Search, Calendar, Clock, Building2, Star, FileText,
-  ArrowRight, Save, X, Thermometer
+  ArrowRight, Save, X, Thermometer, Camera, Copy, Share2, Printer, Navigation
 } from 'lucide-react';
 
 // ── Données des catégories de risques ────────────────────────────────────────
@@ -223,6 +223,22 @@ const RISQUE_COLORS = {
   critique: { bg: 'rgba(139,92,246,0.15)', border: '#8B5CF6', text: '#8B5CF6', label: 'Critique' },
 };
 
+// ── Feature 5: Mapping type chantier → catégories prioritaires ───────────────
+const TYPE_RISQUES_PRIORITAIRES = {
+  'Toiture / Couverture': ['chute', 'epi'],
+  'Désamiantage / Amiante': ['chimique', 'epi'],
+  'Déplombage / Plomb': ['chimique', 'epi'],
+  'Électricité HT / BT': ['electrique', 'epi'],
+  'Démolition partielle': ['chute', 'mecanique'],
+  'Démolition totale / Déconstruction': ['chute', 'mecanique', 'chimique'],
+  'Soudure / Chaudronnerie': ['incendie', 'chimique'],
+  'Levage / Manutention lourde': ['mecanique', 'coactivite'],
+  'Terrassement / Déblais': ['chute', 'mecanique'],
+  'Travaux en espace confiné': ['chimique', 'epi'],
+  'Installation industrielle': ['electrique', 'mecanique'],
+  'VRD (Voirie / Réseaux Divers)': ['electrique', 'mecanique'],
+};
+
 function getNiveauRisque(score) {
   if (score <= 4) return 'faible';
   if (score <= 9) return 'modere';
@@ -235,7 +251,6 @@ function calcScore(reponses) {
   if (total === 0) return 0;
   const nonConformes = Object.values(reponses).filter(r => r === 'non').length;
   const nsps = Object.values(reponses).filter(r => r === 'nsp').length;
-  // score de 1 à 25 basé sur les non-conformités
   return Math.round(((nonConformes + nsps * 0.5) / total) * 25);
 }
 
@@ -259,6 +274,8 @@ function getInitialAnalyse() {
     observations: {},
     actionsPreventives: [],
     statut: 'en_cours',
+    signature: '',
+    photos: {},
   };
 }
 
@@ -274,10 +291,155 @@ function BadgeRisque({ niveau, size = 'sm' }) {
   );
 }
 
+// ── Feature 4: Compression image ─────────────────────────────────────────────
+function compressImage(file, maxWidth = 800) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) {
+          h = Math.round((h * maxWidth) / w);
+          w = maxWidth;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Feature 2: SignaturePad ──────────────────────────────────────────────────
+function SignaturePad({ value, onChange }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const lastPos = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    // Si une signature est déjà stockée, la recharger
+    if (value) {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 0, 0); };
+      img.src = value;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function getPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if (e.touches) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing.current = true;
+    const canvas = canvasRef.current;
+    lastPos.current = getPos(e, canvas);
+  }
+
+  function draw(e) {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    lastPos.current = pos;
+  }
+
+  function endDraw(e) {
+    if (!drawing.current) return;
+    drawing.current = false;
+    const canvas = canvasRef.current;
+    onChange(canvas.toDataURL('image/png'));
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange('');
+  }
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Signature du responsable
+        </label>
+        <button onClick={clearCanvas} style={{
+          fontSize: 12, color: 'var(--text-3)', background: 'transparent', border: '1px solid var(--border-2)',
+          borderRadius: 7, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+        }}>
+          <RotateCcw size={11} /> Effacer
+        </button>
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={160}
+        onMouseDown={startDraw}
+        onMouseMove={draw}
+        onMouseUp={endDraw}
+        onMouseLeave={endDraw}
+        onTouchStart={startDraw}
+        onTouchMove={draw}
+        onTouchEnd={endDraw}
+        style={{
+          width: '100%', height: 160, borderRadius: 10, cursor: 'crosshair',
+          border: '1.5px dashed var(--border-2)', background: 'var(--bg-card-2)', display: 'block',
+          touchAction: 'none',
+        }}
+      />
+      {!value && (
+        <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-4)', marginTop: 6 }}>
+          Signez dans la zone ci-dessus avec votre doigt ou la souris
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Composant Question ───────────────────────────────────────────────────────
-function QuestionItem({ question, value, onChange, observation, onObservation }) {
+function QuestionItem({ question, value, onChange, observation, onObservation, photo, onPhoto }) {
   const [showObs, setShowObs] = useState(false);
+  const fileInputRef = useRef(null);
   const colors = { oui: '#10B981', non: '#EF4444', nsp: '#F59E0B', '': 'var(--text-4)' };
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const dataUrl = await compressImage(file);
+    onPhoto(dataUrl);
+  }
 
   return (
     <div style={{
@@ -289,7 +451,7 @@ function QuestionItem({ question, value, onChange, observation, onObservation })
         <div style={{ flex: 1, fontSize: 13.5, color: 'var(--text-1)', lineHeight: 1.5, paddingTop: 2 }}>
           {question.text}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
           {['oui', 'non', 'nsp'].map(opt => (
             <button key={opt} onClick={() => onChange(opt === value ? '' : opt)} style={{
               padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${value === opt ? colors[opt] : 'var(--border-2)'}`,
@@ -308,8 +470,39 @@ function QuestionItem({ question, value, onChange, observation, onObservation })
           }}>
             <FileText size={13} />
           </button>
+          {/* Feature 4: Camera button */}
+          <button onClick={() => fileInputRef.current && fileInputRef.current.click()} style={{
+            width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${photo ? '#10B981' : 'var(--border-2)'}`,
+            background: photo ? 'rgba(16,185,129,0.15)' : 'transparent', color: photo ? '#10B981' : 'var(--text-4)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative'
+          }}>
+            <Camera size={13} />
+            {photo && (
+              <span style={{
+                position: 'absolute', top: -4, right: -4, width: 10, height: 10,
+                background: '#10B981', borderRadius: '50%', border: '2px solid var(--bg-card)'
+              }} />
+            )}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={handlePhotoChange}
+          />
         </div>
       </div>
+      {/* Miniature photo */}
+      {photo && (
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src={photo} alt="Photo" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border-2)' }} />
+          <button onClick={() => onPhoto(null)} style={{
+            fontSize: 11, color: '#EF4444', background: 'transparent', border: 'none', cursor: 'pointer'
+          }}>Supprimer</button>
+        </div>
+      )}
       {showObs && (
         <div style={{ marginTop: 10 }}>
           <textarea
@@ -329,14 +522,17 @@ function QuestionItem({ question, value, onChange, observation, onObservation })
 }
 
 // ── Composant Catégorie ──────────────────────────────────────────────────────
-function CategorieSection({ cat, reponses, observations, onChange, onObservation }) {
+function CategorieSection({ cat, reponses, observations, photos, onChange, onObservation, onPhoto, prioritaire }) {
   const [expanded, setExpanded] = useState(true);
   const Icon = cat.icon;
   const answered = cat.questions.filter(q => reponses[q.id]).length;
   const nonConformes = cat.questions.filter(q => reponses[q.id] === 'non').length;
 
   return (
-    <div className="glass-panel" style={{ marginBottom: 16, overflow: 'hidden' }}>
+    <div className="glass-panel" style={{
+      marginBottom: 16, overflow: 'hidden',
+      border: prioritaire ? `2px solid ${cat.color}` : undefined,
+    }}>
       <button onClick={() => setExpanded(!expanded)} style={{
         width: '100%', display: 'flex', alignItems: 'center', gap: 12,
         padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left'
@@ -348,7 +544,16 @@ function CategorieSection({ cat, reponses, observations, onChange, onObservation
           <Icon size={18} style={{ color: cat.color }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{cat.label}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {cat.label}
+            {/* Feature 5: Badge prioritaire */}
+            {prioritaire && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: cat.color, background: `${cat.color}20`,
+                border: `1px solid ${cat.color}`, borderRadius: 20, padding: '1px 7px', letterSpacing: '0.02em'
+              }}>⚡ Prioritaire</span>
+            )}
+          </div>
           <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
             {answered}/{cat.questions.length} réponses
             {nonConformes > 0 && <span style={{ color: '#EF4444', marginLeft: 8, fontWeight: 600 }}>• {nonConformes} non-conformité{nonConformes > 1 ? 's' : ''}</span>}
@@ -371,6 +576,8 @@ function CategorieSection({ cat, reponses, observations, onChange, onObservation
               onChange={v => onChange(q.id, v)}
               observation={observations[q.id]}
               onObservation={v => onObservation(q.id, v)}
+              photo={(photos || {})[q.id] || null}
+              onPhoto={v => onPhoto(q.id, v)}
             />
           ))}
         </div>
@@ -395,125 +602,186 @@ function Synthese({ analyse, onRetour }) {
     items: cat.questions.filter(q => analyse.reponses[q.id] === 'non' || analyse.reponses[q.id] === 'nsp')
   })).filter(x => x.items.length > 0);
 
+  // Feature 6: Email & WhatsApp sharing
+  const nonConformesCount = totalNon + totalNsp;
+  const shareSubject = `Analyse de risque - ${analyse.chantier || 'Chantier'}`;
+  const shareBody = `Analyse de risque chantier\n\nChantier : ${analyse.chantier || 'Non défini'}\nDate : ${analyse.date} ${analyse.heure}\nScore : ${score}/25\nNiveau : ${RISQUE_COLORS[niveau].label}\nNon-conformités : ${nonConformesCount}\n\nResponsable : ${analyse.responsable || 'Non défini'}`;
+  const emailHref = `mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareBody)}`;
+  const waHref = `https://wa.me/?text=${encodeURIComponent(shareBody)}`;
+
+  // Feature 3: Export PDF
+  function handlePrint() {
+    window.print();
+  }
+
   return (
     <div>
       {/* Score global */}
-      <div className="glass-panel" style={{ padding: 28, marginBottom: 20, textAlign: 'center' }}>
-        <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-          Niveau de risque global
-        </div>
-        <div style={{
-          width: 120, height: 120, borderRadius: '50%', margin: '0 auto 16px',
-          background: niveauInfo.bg, border: `3px solid ${niveauInfo.border}`,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{ fontSize: 32, fontWeight: 900, color: niveauInfo.text }}>{score}</div>
-          <div style={{ fontSize: 11, color: niveauInfo.text, opacity: 0.8 }}>/25</div>
-        </div>
-        <BadgeRisque niveau={niveau} size="lg" />
-        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 24 }}>
-          {[
-            { label: 'Conformes', val: totalOui, color: '#10B981' },
-            { label: 'Non-conformes', val: totalNon, color: '#EF4444' },
-            { label: 'À vérifier', val: totalNsp, color: '#F59E0B' },
-            { label: 'Non répondus', val: totalQ - totalAnswered, color: 'var(--text-4)' },
-          ].map(s => (
-            <div key={s.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.val}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Non-conformités détaillées */}
-      {nonConformitesByCat.length > 0 && (
-        <div className="glass-panel" style={{ padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <AlertTriangle size={16} style={{ color: '#EF4444' }} /> Points d'attention
+      <div id="print-zone">
+        <div className="glass-panel" style={{ padding: 28, marginBottom: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+            Niveau de risque global
           </div>
-          {nonConformitesByCat.map(({ cat, items }) => {
-            const Icon = cat.icon;
-            return (
-              <div key={cat.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <Icon size={14} style={{ color: cat.color }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{cat.label}</span>
-                </div>
-                {items.map(q => (
-                  <div key={q.id} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px',
-                    background: analyse.reponses[q.id] === 'non' ? 'rgba(239,68,68,0.07)' : 'rgba(245,158,11,0.07)',
-                    borderRadius: 8, marginBottom: 4, marginLeft: 22
-                  }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1,
-                      background: analyse.reponses[q.id] === 'non' ? '#EF4444' : '#F59E0B',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      <span style={{ fontSize: 10, color: 'white', fontWeight: 800 }}>
-                        {analyse.reponses[q.id] === 'non' ? '!' : '?'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.4 }}>
-                      {q.text}
-                      {analyse.observations[q.id] && (
-                        <div style={{ marginTop: 4, color: 'var(--text-3)', fontStyle: 'italic', fontSize: 12 }}>
-                          → {analyse.observations[q.id]}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+          <div style={{
+            width: 120, height: 120, borderRadius: '50%', margin: '0 auto 16px',
+            background: niveauInfo.bg, border: `3px solid ${niveauInfo.border}`,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <div style={{ fontSize: 32, fontWeight: 900, color: niveauInfo.text }}>{score}</div>
+            <div style={{ fontSize: 11, color: niveauInfo.text, opacity: 0.8 }}>/25</div>
+          </div>
+          <BadgeRisque niveau={niveau} size="lg" />
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 24 }}>
+            {[
+              { label: 'Conformes', val: totalOui, color: '#10B981' },
+              { label: 'Non-conformes', val: totalNon, color: '#EF4444' },
+              { label: 'À vérifier', val: totalNsp, color: '#F59E0B' },
+              { label: 'Non répondus', val: totalQ - totalAnswered, color: 'var(--text-4)' },
+            ].map(s => (
+              <div key={s.label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.val}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{s.label}</div>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Actions préventives */}
-      {analyse.actionsPreventives.length > 0 && (
-        <div className="glass-panel" style={{ padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CheckCircle size={16} style={{ color: '#10B981' }} /> Actions préventives
+            ))}
           </div>
-          {analyse.actionsPreventives.map((a, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px',
-              background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)',
-              borderRadius: 8, marginBottom: 6
+        </div>
+
+        {/* Feature 6: Partager */}
+        <div className="glass-panel" style={{ padding: 16, marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Share2 size={14} style={{ color: 'var(--blue)' }} /> Partager
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <a href={emailHref} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px',
+              background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10,
+              color: 'var(--blue)', textDecoration: 'none', fontSize: 13, fontWeight: 600
+            }}>📧 Email</a>
+            <a href={waHref} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px',
+              background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.3)', borderRadius: 10,
+              color: '#25D166', textDecoration: 'none', fontSize: 13, fontWeight: 600
+            }}>💬 WhatsApp</a>
+            {/* Feature 3: Exporter PDF */}
+            <button onClick={handlePrint} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px',
+              background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 10,
+              color: '#8B5CF6', cursor: 'pointer', fontSize: 13, fontWeight: 600
             }}>
-              <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                <span style={{ fontSize: 10, color: '#10B981', fontWeight: 800 }}>{i + 1}</span>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>{a.action}</div>
-                {a.responsable && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Responsable : {a.responsable} {a.delai ? `• Délai : ${a.delai}` : ''}</div>}
-              </div>
-            </div>
-          ))}
+              <Printer size={14} /> Exporter PDF
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Info chantier résumé */}
-      <div className="glass-panel" style={{ padding: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 14 }}>Informations chantier</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {[
-            { label: 'Chantier', val: analyse.chantier },
-            { label: 'Type travaux', val: analyse.type === 'Autre (préciser)' ? analyse.typeCustom || 'Autre' : analyse.type },
-            { label: 'Intervention', val: TYPES_INTERVENTION.find(t => t.value === analyse.typeIntervention)?.label },
-            { label: 'Environnement', val: (analyse.environnement || []).map(v => ENVIRONNEMENTS_SITE.find(e => e.value === v)?.label).filter(Boolean).join(', ') || null },
-            { label: 'Date', val: analyse.date },
-            { label: 'Heure', val: analyse.heure },
-            { label: 'Météo', val: analyse.meteo },
-            { label: 'Responsable', val: analyse.responsable },
-          ].filter(x => x.val).map(({ label, val }) => (
-            <div key={label} style={{ padding: '8px 12px', background: 'var(--bg-card-2)', borderRadius: 8 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>{val}</div>
+        {/* Non-conformités détaillées */}
+        {nonConformitesByCat.length > 0 && (
+          <div className="glass-panel" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={16} style={{ color: '#EF4444' }} /> Points d'attention
             </div>
-          ))}
+            {nonConformitesByCat.map(({ cat, items }) => {
+              const Icon = cat.icon;
+              return (
+                <div key={cat.id} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Icon size={14} style={{ color: cat.color }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{cat.label}</span>
+                  </div>
+                  {items.map(q => (
+                    <div key={q.id} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px',
+                      background: analyse.reponses[q.id] === 'non' ? 'rgba(239,68,68,0.07)' : 'rgba(245,158,11,0.07)',
+                      borderRadius: 8, marginBottom: 4, marginLeft: 22
+                    }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+                        background: analyse.reponses[q.id] === 'non' ? '#EF4444' : '#F59E0B',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <span style={{ fontSize: 10, color: 'white', fontWeight: 800 }}>
+                          {analyse.reponses[q.id] === 'non' ? '!' : '?'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.4, flex: 1 }}>
+                        {q.text}
+                        {analyse.observations[q.id] && (
+                          <div style={{ marginTop: 4, color: 'var(--text-3)', fontStyle: 'italic', fontSize: 12 }}>
+                            → {analyse.observations[q.id]}
+                          </div>
+                        )}
+                        {/* Feature 4: Miniature photo dans la synthèse */}
+                        {analyse.photos && analyse.photos[q.id] && (
+                          <div style={{ marginTop: 6 }}>
+                            <img src={analyse.photos[q.id]} alt="Photo" style={{
+                              width: 80, height: 54, objectFit: 'cover', borderRadius: 6,
+                              border: '1px solid var(--border-2)'
+                            }} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Actions préventives */}
+        {analyse.actionsPreventives.length > 0 && (
+          <div className="glass-panel" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle size={16} style={{ color: '#10B981' }} /> Actions préventives
+            </div>
+            {analyse.actionsPreventives.map((a, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px',
+                background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)',
+                borderRadius: 8, marginBottom: 6
+              }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <span style={{ fontSize: 10, color: '#10B981', fontWeight: 800 }}>{i + 1}</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>{a.action}</div>
+                  {a.responsable && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Responsable : {a.responsable} {a.delai ? `• Délai : ${a.delai}` : ''}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Feature 2: Signature dans la synthèse */}
+        {analyse.signature && (
+          <div className="glass-panel" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 12 }}>Signature du responsable</div>
+            <img src={analyse.signature} alt="Signature" style={{
+              maxWidth: '100%', height: 100, objectFit: 'contain',
+              border: '1px solid var(--border-2)', borderRadius: 8, background: 'var(--bg-card-2)', padding: 8
+            }} />
+          </div>
+        )}
+
+        {/* Info chantier résumé */}
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 14 }}>Informations chantier</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[
+              { label: 'Chantier', val: analyse.chantier },
+              { label: 'Type travaux', val: analyse.type === 'Autre (préciser)' ? analyse.typeCustom || 'Autre' : analyse.type },
+              { label: 'Intervention', val: TYPES_INTERVENTION.find(t => t.value === analyse.typeIntervention)?.label },
+              { label: 'Environnement', val: (analyse.environnement || []).map(v => ENVIRONNEMENTS_SITE.find(e => e.value === v)?.label).filter(Boolean).join(', ') || null },
+              { label: 'Date', val: analyse.date },
+              { label: 'Heure', val: analyse.heure },
+              { label: 'Météo', val: analyse.meteo },
+              { label: 'Responsable', val: analyse.responsable },
+            ].filter(x => x.val).map(({ label, val }) => (
+              <div key={label} style={{ padding: '8px 12px', background: 'var(--bg-card-2)', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>{val}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -521,7 +789,7 @@ function Synthese({ analyse, onRetour }) {
 }
 
 // ── Carte analyse sauvegardée ────────────────────────────────────────────────
-function AnalyseCard({ analyse, onView, onDelete }) {
+function AnalyseCard({ analyse, onView, onDelete, onDuplicate }) {
   const score = calcScore(analyse.reponses);
   const niveau = getNiveauRisque(score);
   const niveauInfo = RISQUE_COLORS[niveau];
@@ -567,6 +835,13 @@ function AnalyseCard({ analyse, onView, onDelete }) {
           }}>
             <Eye size={14} />
           </button>
+          {/* Feature 7: Duplicate button */}
+          <button onClick={e => { e.stopPropagation(); onDuplicate(); }} title="Dupliquer" style={{
+            width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(245,158,11,0.3)',
+            background: 'rgba(245,158,11,0.1)', color: '#F59E0B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Copy size={14} />
+          </button>
           <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{
             width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)',
             background: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -601,6 +876,8 @@ function toRow(a) {
     actions_preventives: a.actionsPreventives,
     statut:              a.statut,
     saved_at:            a.savedAt || new Date().toISOString(),
+    signature:           a.signature,
+    photos:              a.photos,
   };
 }
 
@@ -625,6 +902,8 @@ function fromRow(r) {
     actionsPreventives: r.actions_preventives || [],
     statut:            r.statut,
     savedAt:           r.saved_at,
+    signature:         r.signature || '',
+    photos:            r.photos || {},
   };
 }
 
@@ -640,6 +919,15 @@ export default function AnalyseRisqueChantier() {
   const [search, setSearch] = useState('');
   const [nouvelleAction, setNouvelleAction] = useState({ action: '', responsable: '', delai: '' });
   const topRef = useRef(null);
+  // Feature 1: Géolocalisation state
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState('');
+  // Feature 7: Toast notification
+  const [toast, setToast] = useState('');
+  // Feature 8: PWA banner
+  const [pwaBanner, setPwaBanner] = useState(() => {
+    try { return !localStorage.getItem('pwa_banner_dismissed'); } catch { return false; }
+  });
 
   // Chargement depuis Supabase
   const loadHistorique = useCallback(async () => {
@@ -660,6 +948,14 @@ export default function AnalyseRisqueChantier() {
   const updateObservation = (qid, val) => {
     setAnalyse(a => ({ ...a, observations: { ...a.observations, [qid]: val } }));
   };
+  // Feature 4: update photos
+  const updatePhoto = (qid, val) => {
+    setAnalyse(a => {
+      const newPhotos = { ...(a.photos || {}) };
+      if (val === null) { delete newPhotos[qid]; } else { newPhotos[qid] = val; }
+      return { ...a, photos: newPhotos };
+    });
+  };
 
   const saveAnalyse = async (statut = 'termine') => {
     setSaving(true);
@@ -679,6 +975,29 @@ export default function AnalyseRisqueChantier() {
     setHistorique(h => h.filter(x => x.id !== id));
   };
 
+  // Feature 7: Dupliquer une analyse
+  const duplicateAnalyse = async (original) => {
+    const now = new Date();
+    const copy = {
+      ...original,
+      id: Date.now(),
+      date: now.toISOString().split('T')[0],
+      heure: now.toTimeString().slice(0, 5),
+      statut: 'en_cours',
+      savedAt: null,
+      signature: '',
+      photos: {},
+    };
+    const { error } = await supabase
+      .from('analyses_risque')
+      .upsert(toRow({ ...copy, savedAt: now.toISOString() }), { onConflict: 'id' });
+    if (!error) {
+      await loadHistorique();
+      setToast('Dupliqué !');
+      setTimeout(() => setToast(''), 2500);
+    }
+  };
+
   const addAction = () => {
     if (!nouvelleAction.action.trim()) return;
     setAnalyse(a => ({ ...a, actionsPreventives: [...a.actionsPreventives, { ...nouvelleAction }] }));
@@ -688,11 +1007,44 @@ export default function AnalyseRisqueChantier() {
     setAnalyse(a => ({ ...a, actionsPreventives: a.actionsPreventives.filter((_, idx) => idx !== i) }));
   };
 
+  // Feature 1: Géolocalisation
+  const handleGeolocate = () => {
+    setGeoError('');
+    if (!navigator.geolocation) {
+      setGeoError('Géolocalisation non supportée');
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+          const data = await res.json();
+          const addr = data.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+          setAnalyse(a => ({ ...a, adresse: addr }));
+        } catch {
+          setAnalyse(a => ({ ...a, adresse: `${lat.toFixed(5)}, ${lon.toFixed(5)}` }));
+        }
+        setGeoLoading(false);
+      },
+      (err) => {
+        setGeoLoading(false);
+        setGeoError('Accès à la position refusé');
+      }
+    );
+  };
+
   const totalQ = CATEGORIES.reduce((s, c) => s + c.questions.length, 0);
   const answered = Object.keys(analyse.reponses).length;
   const nonConformes = Object.values(analyse.reponses).filter(r => r === 'non').length;
   const score = calcScore(analyse.reponses);
   const niveau = getNiveauRisque(score);
+
+  // Feature 5: catégories prioritaires pour le type sélectionné
+  const priorityCats = analyse.type && TYPE_RISQUES_PRIORITAIRES[analyse.type]
+    ? TYPE_RISQUES_PRIORITAIRES[analyse.type]
+    : [];
 
   const filteredHistorique = historique.filter(h =>
     !search || h.chantier?.toLowerCase().includes(search.toLowerCase()) || h.type?.toLowerCase().includes(search.toLowerCase())
@@ -702,6 +1054,15 @@ export default function AnalyseRisqueChantier() {
 
   const inputStyle = { width: '100%', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: 'var(--text-1)', outline: 'none', fontFamily: 'inherit' };
   const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
+
+  // Feature 3 & 6: detail view share helpers
+  const detailShareSubject = analyseVue ? `Analyse de risque - ${analyseVue.chantier || 'Chantier'}` : '';
+  const detailScore = analyseVue ? calcScore(analyseVue.reponses) : 0;
+  const detailNiveau = analyseVue ? RISQUE_COLORS[getNiveauRisque(detailScore)].label : '';
+  const detailNonConf = analyseVue ? Object.values(analyseVue.reponses).filter(r => r === 'non' || r === 'nsp').length : 0;
+  const detailShareBody = analyseVue
+    ? `Analyse de risque chantier\n\nChantier : ${analyseVue.chantier || 'Non défini'}\nDate : ${analyseVue.date} ${analyseVue.heure}\nScore : ${detailScore}/25\nNiveau : ${detailNiveau}\nNon-conformités : ${detailNonConf}\n\nResponsable : ${analyseVue.responsable || 'Non défini'}`
+    : '';
 
   // ── Vue Détail ─────────────────────────────────────────────────────────────
   if (vue === 'detail' && analyseVue) {
@@ -715,9 +1076,29 @@ export default function AnalyseRisqueChantier() {
           }}>
             <ChevronLeft size={15} /> Retour
           </button>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>{analyseVue.chantier || 'Analyse sans nom'}</div>
             <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{analyseVue.date} {analyseVue.heure}</div>
+          </div>
+          {/* Feature 3 & 6 in detail view */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <a href={`mailto:?subject=${encodeURIComponent(detailShareSubject)}&body=${encodeURIComponent(detailShareBody)}`} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10,
+              color: 'var(--blue)', textDecoration: 'none', fontSize: 13, fontWeight: 600
+            }}>📧</a>
+            <a href={`https://wa.me/?text=${encodeURIComponent(detailShareBody)}`} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.3)', borderRadius: 10,
+              color: '#25D166', textDecoration: 'none', fontSize: 13, fontWeight: 600
+            }}>💬</a>
+            <button onClick={() => window.print()} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 10,
+              color: '#8B5CF6', cursor: 'pointer', fontSize: 13, fontWeight: 600
+            }}>
+              <Printer size={14} /> PDF
+            </button>
           </div>
         </div>
         <Synthese analyse={analyseVue} onRetour={() => setVue('liste')} />
@@ -800,9 +1181,26 @@ export default function AnalyseRisqueChantier() {
                 </div>
                 <div style={{ gridColumn: '1/-1' }}>
                   <label style={labelStyle}>Adresse / Localisation</label>
-                  <input value={analyse.adresse} onChange={e => setAnalyse(a => ({ ...a, adresse: e.target.value }))}
-                    placeholder="Ex: 12 rue de la Paix, 97400 Saint-Denis"
-                    style={inputStyle} />
+                  {/* Feature 1: Champ adresse + bouton géolocalisation */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input value={analyse.adresse} onChange={e => setAnalyse(a => ({ ...a, adresse: e.target.value }))}
+                      placeholder="Ex: 12 rue de la Paix, 97400 Saint-Denis"
+                      style={{ ...inputStyle, flex: 1 }} />
+                    <button onClick={handleGeolocate} disabled={geoLoading} title="Géolocaliser automatiquement" style={{
+                      flexShrink: 0, padding: '10px 14px', borderRadius: 10,
+                      border: '1px solid var(--input-border)', background: geoLoading ? 'var(--bg-card-2)' : 'rgba(59,130,246,0.1)',
+                      color: 'var(--blue)', cursor: geoLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                      fontSize: 13, fontWeight: 600
+                    }}>
+                      {geoLoading
+                        ? <div style={{ width: 14, height: 14, border: '2px solid rgba(59,130,246,0.3)', borderTopColor: 'var(--blue)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                        : <Navigation size={14} />
+                      }
+                    </button>
+                  </div>
+                  {geoError && (
+                    <div style={{ fontSize: 12, color: '#EF4444', marginTop: 5 }}>{geoError}</div>
+                  )}
                 </div>
                 <div>
                   <label style={labelStyle}>Date</label>
@@ -867,7 +1265,6 @@ export default function AnalyseRisqueChantier() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                     {s.types.map(t => {
                       const active = analyse.type === t;
-                      const isAutre = t === 'Autre (préciser)';
                       return (
                         <button key={t} onClick={() => setAnalyse(a => ({ ...a, type: a.type === t ? '' : t, typeCustom: a.type === t ? '' : a.typeCustom }))} style={{
                           padding: '6px 13px', borderRadius: 20, cursor: 'pointer', transition: 'all 0.15s', fontSize: 12.5, fontWeight: 600,
@@ -888,6 +1285,19 @@ export default function AnalyseRisqueChantier() {
                   <input value={analyse.typeCustom} onChange={e => setAnalyse(a => ({ ...a, typeCustom: e.target.value }))}
                     placeholder="Précisez le type de travaux..."
                     style={{ ...inputStyle, borderColor: '#EC4899' }} autoFocus />
+                </div>
+              )}
+              {/* Feature 5: Notification catégories prioritaires */}
+              {priorityCats.length > 0 && (
+                <div style={{
+                  marginTop: 14, padding: '10px 14px',
+                  background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)',
+                  borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                  <span style={{ fontSize: 16 }}>⚡</span>
+                  <span style={{ fontSize: 13, color: '#F59E0B', fontWeight: 600 }}>
+                    {priorityCats.length} catégorie{priorityCats.length > 1 ? 's' : ''} de risques prioritaires identifiée{priorityCats.length > 1 ? 's' : ''} pour ce type de chantier
+                  </span>
                 </div>
               )}
             </div>
@@ -971,8 +1381,11 @@ export default function AnalyseRisqueChantier() {
                 cat={cat}
                 reponses={analyse.reponses}
                 observations={analyse.observations}
+                photos={analyse.photos}
                 onChange={updateReponse}
                 onObservation={updateObservation}
+                onPhoto={updatePhoto}
+                prioritaire={priorityCats.includes(cat.id)}
               />
             ))}
           </div>
@@ -1067,6 +1480,20 @@ export default function AnalyseRisqueChantier() {
                 ))}
               </div>
             )}
+
+            {/* Feature 2: Signature numérique en bas du step 3 */}
+            <div className="glass-panel" style={{ padding: 24, marginTop: 20 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={16} style={{ color: 'var(--blue)' }} /> Signature
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-4)', marginBottom: 4 }}>
+                Signez pour valider l'analyse
+              </div>
+              <SignaturePad
+                value={analyse.signature}
+                onChange={v => setAnalyse(a => ({ ...a, signature: v }))}
+              />
+            </div>
           </div>
         )}
 
@@ -1118,6 +1545,36 @@ export default function AnalyseRisqueChantier() {
           Enregistrement…
         </div>
       )}
+
+      {/* Feature 7: Toast notification */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: '#10B981', color: 'white', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Feature 8: PWA Banner */}
+      {pwaBanner && (
+        <div style={{
+          padding: '12px 16px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)',
+          borderRadius: 12, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10
+        }}>
+          <span style={{ fontSize: 20 }}>📱</span>
+          <span style={{ flex: 1, fontSize: 13, color: 'var(--blue)', fontWeight: 500 }}>
+            App disponible hors-ligne — installez-la depuis votre navigateur
+          </span>
+          <button onClick={() => {
+            setPwaBanner(false);
+            try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
+          }} style={{
+            background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, borderRadius: 6
+          }}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div style={{
@@ -1214,6 +1671,7 @@ export default function AnalyseRisqueChantier() {
               analyse={h}
               onView={() => { setAnalyseVue(h); setVue('detail'); }}
               onDelete={() => deleteAnalyse(h.id)}
+              onDuplicate={() => duplicateAnalyse(h)}
             />
           ))}
         </div>
