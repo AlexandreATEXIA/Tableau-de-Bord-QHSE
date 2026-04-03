@@ -3,25 +3,29 @@ import { useTheme } from './ThemeContext';
 import { supabase } from './supabaseClient';
 import {
   LayoutDashboard, RefreshCw, AlertTriangle, CheckCircle, Clock,
-  ShieldAlert, Star, HeartPulse, GraduationCap, Target, Activity, Zap
+  ShieldAlert, Star, HeartPulse, GraduationCap, Target, Activity, Zap, Save
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis
 } from 'recharts';
-
-const EFFECTIF = 50;
-const EFFECTIF_H = 1607;
+import { useConfig } from './ConfigContext';
+import { Settings, X } from 'lucide-react';
 
 function calcExp(obt, val) {
   const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
 }
 
-export default function DashboardComex() {
+export default function DashboardComex({ onNavigate }) {
   const { p, isDark } = useTheme();
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLU]   = useState(null);
+  const { config, saveConfig } = useConfig();
+  const EFFECTIF   = config.effectif;
+  const EFFECTIF_H = config.h_an;
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [lastUpdate, setLU]     = useState(null);
+  const [showConfig, setShowConfig] = useState(false);
+  const [cfgEdit, setCfgEdit]   = useState({ effectif: config.effectif, h_an: config.h_an, nom: config.nom });
 
   useEffect(() => { charger(); }, []);
 
@@ -92,12 +96,12 @@ export default function DashboardComex() {
     ];
 
     const alertes=[];
-    if(accArret.length>0)     alertes.push({level:'red',   msg:`${accArret.length} accident(s) avec arrêt — TF : ${TF}`});
-    if(actRetard.length>0)    alertes.push({level:'red',   msg:`${actRetard.length} action(s) PDCA en retard`});
-    if(risquesCrit.length>0)  alertes.push({level:'red',   msg:`${risquesCrit.length} risque(s) critique(s) dans le DUERP`});
-    if(ncOuvertes.length>0)   alertes.push({level:'amber', msg:`${ncOuvertes.length} non-conformité(s) ouverte(s) sans action`});
-    if(habsPerimees.length>0) alertes.push({level:'amber', msg:`${habsPerimees.length} habilitation(s) périmée(s) à renouveler`});
-    if(habsBientot.length>0)  alertes.push({level:'amber', msg:`${habsBientot.length} habilitation(s) à renouveler dans 30 jours`});
+    if(accArret.length>0)     alertes.push({level:'red',   msg:`${accArret.length} accident(s) avec arrêt — TF : ${TF}`,         tab:'accidents'});
+    if(actRetard.length>0)    alertes.push({level:'red',   msg:`${actRetard.length} action(s) PDCA en retard`,                    tab:'pdca'});
+    if(risquesCrit.length>0)  alertes.push({level:'red',   msg:`${risquesCrit.length} risque(s) critique(s) dans le DUERP`,       tab:'duerp'});
+    if(ncOuvertes.length>0)   alertes.push({level:'amber', msg:`${ncOuvertes.length} non-conformité(s) ouverte(s) sans action`,   tab:'qualite'});
+    if(habsPerimees.length>0) alertes.push({level:'amber', msg:`${habsPerimees.length} habilitation(s) périmée(s) à renouveler`,  tab:'rh'});
+    if(habsBientot.length>0)  alertes.push({level:'amber', msg:`${habsBientot.length} habilitation(s) à renouveler dans 30 jours`,tab:'rh'});
     if(alertes.length===0)    alertes.push({level:'green', msg:'Tous les indicateurs sont au vert — Excellent !'});
 
     return { accArret:accArret.length, jours, TF, TG, actRetard:actRetard.length, actTerminees:actTerminees.length, tauxPDCA, totalActions:actions.length, habsPerimees:habsPerimees.length, habsBientot:habsBientot.length, risquesCrit:risquesCrit.length, totalRisques:risques.length, ncOuvertes:ncOuvertes.length, tauxNC, moyenneSat, scoreGlobal, scoreSecurite, scoreHabs, scoreMaitrise, tauxPDCA, scoreSat, scoreAudit, accChart, ncChart, satChart, radarData, alertes };
@@ -134,8 +138,41 @@ export default function DashboardComex() {
             {lastUpdate && <span className="ml-2 opacity-50">· {lastUpdate.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>}
           </p>
         </div>
-        <button onClick={charger} className="btn-primary"><RefreshCw size={16} className={loading?'animate-spin':''}/> Mettre à jour</button>
+        <div className="flex gap-2">
+          <button onClick={() => { setCfgEdit({ effectif: config.effectif, h_an: config.h_an, nom: config.nom }); setShowConfig(v=>!v); }} className="btn-secondary" title="Paramètres entreprise"><Settings size={15}/></button>
+          <button onClick={charger} className="btn-primary"><RefreshCw size={16} className={loading?'animate-spin':''}/> Mettre à jour</button>
+        </div>
       </header>
+
+      {/* ── Panneau config entreprise ───────────────────────────────────── */}
+      {showConfig && (
+        <div className="glass-panel p-5 border border-blue-500/20 animate-fade-up">
+          <div className="flex justify-between items-center mb-4">
+            <h3 style={{fontWeight:700,color:p.text1,display:'flex',alignItems:'center',gap:8}}><Settings size={16} style={{color:'var(--blue)'}}/> Paramètres de l'entreprise</h3>
+            <button onClick={() => setShowConfig(false)} style={{background:'none',border:'none',cursor:'pointer',color:p.text3}}><X size={18}/></button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {[
+              { label:"Nom de l'entreprise", key:'nom',      type:'text',   unit:'' },
+              { label:'Effectif total',       key:'effectif', type:'number', unit:'pers.' },
+              { label:'Heures / an / pers.',  key:'h_an',     type:'number', unit:'h' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{fontSize:11,fontWeight:700,color:p.text3,textTransform:'uppercase',letterSpacing:'0.06em',display:'block',marginBottom:4}}>{f.label}</label>
+                <div style={{display:'flex',alignItems:'center',gap:6,background:p.bgInput,border:'1px solid '+p.border,borderRadius:8,padding:'8px 12px'}}>
+                  <input type={f.type} value={cfgEdit[f.key]} onChange={e => setCfgEdit(v=>({...v,[f.key]:f.type==='number'?Number(e.target.value):e.target.value}))}
+                    style={{flex:1,background:'transparent',border:'none',outline:'none',color:p.text1,fontSize:14,fontWeight:700,fontFamily:'inherit'}}/>
+                  {f.unit && <span style={{fontSize:11,color:p.text4}}>{f.unit}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setShowConfig(false)} className="btn-secondary">Annuler</button>
+            <button onClick={async () => { await saveConfig(cfgEdit); setShowConfig(false); charger(); }} className="btn-primary"><Save size={15}/> Enregistrer</button>
+          </div>
+        </div>
+      )}
 
       {/* Score + Alertes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -167,9 +204,14 @@ export default function DashboardComex() {
           </h3>
           <div className="space-y-2">
             {kpis.alertes.map((a,i)=>(
-              <div key={i} className={`alert-banner ${a.level==='red'?'alert-red':a.level==='amber'?'alert-amber':'alert-green'}`} style={{padding:'9px 14px'}}>
+              <div key={i}
+                className={`alert-banner ${a.level==='red'?'alert-red':a.level==='amber'?'alert-amber':'alert-green'}`}
+                style={{padding:'9px 14px', cursor: a.tab && onNavigate ? 'pointer' : 'default', transition:'opacity 0.15s'}}
+                onClick={() => a.tab && onNavigate && onNavigate(a.tab)}
+                title={a.tab && onNavigate ? `Aller vers ${a.tab}` : undefined}>
                 {a.level==='green'?<CheckCircle size={14}/>:a.level==='red'?<AlertTriangle size={14}/>:<Clock size={14}/>}
-                <p style={{fontSize:13}}>{a.msg}</p>
+                <p style={{fontSize:13,flex:1}}>{a.msg}</p>
+                {a.tab && onNavigate && <span style={{fontSize:10,opacity:0.6,whiteSpace:'nowrap'}}>→ Voir</span>}
               </div>
             ))}
           </div>
