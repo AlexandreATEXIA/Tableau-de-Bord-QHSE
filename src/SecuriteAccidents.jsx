@@ -42,7 +42,7 @@ export default function SecuriteAccidents() {
     type_evenement: "Presqu'accident",
     lieu: 'Atelier',
     description: '',
-    cause_immediate: '',
+    cause_immediate: [],
     victime: '',
     temoin: '',
     jours_perdus: 0,
@@ -71,11 +71,12 @@ export default function SecuriteAccidents() {
   };
 
   const declarerEvenement = async () => {
-    const { data, error } = await supabase.from('securite_accidents').insert([form]).select();
+    const payload = { ...form, cause_immediate: Array.isArray(form.cause_immediate) ? form.cause_immediate.join(' / ') : form.cause_immediate };
+    const { data, error } = await supabase.from('securite_accidents').insert([payload]).select();
     if (!error && data) {
       setAccidents([data[0], ...accidents]);
       setShowForm(false);
-      setForm({ date_evenement: new Date().toISOString().split('T')[0], type_evenement: "Presqu'accident", lieu: 'Atelier', description: '', cause_immediate: '', victime: '', temoin: '', jours_perdus: 0, statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '' });
+      setForm({ date_evenement: new Date().toISOString().split('T')[0], type_evenement: "Presqu'accident", lieu: 'Atelier', description: '', cause_immediate: [], victime: '', temoin: '', jours_perdus: 0, statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '' });
     }
   };
 
@@ -216,11 +217,21 @@ export default function SecuriteAccidents() {
               <input type="number" min="0" value={form.jours_perdus} onChange={e => setForm({...form, jours_perdus: parseInt(e.target.value) || 0})} className="input-modern" disabled={form.type_evenement !== 'Accident avec arrêt'}/>
             </div>
             <div>
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Cause immédiate</label>
-              <select value={form.cause_immediate} onChange={e => setForm({...form, cause_immediate: e.target.value})} className="input-modern">
-                <option value="">Sélectionner...</option>
-                {CAUSES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Cause(s) immédiate(s)</label>
+              <div style={{ border:'1px solid var(--border)', borderRadius:9, background:'var(--bg-input)', padding:'6px 8px', minHeight:42, display:'flex', flexWrap:'wrap', gap:5 }}>
+                {(form.cause_immediate || []).map(c => (
+                  <span key={c} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', color:'#EF4444', borderRadius:6, padding:'2px 8px', fontSize:12, fontWeight:600 }}>
+                    {c}
+                    <button onClick={() => setForm({...form, cause_immediate: form.cause_immediate.filter(x => x !== c)})}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:'0 2px', lineHeight:1, fontSize:14 }}>×</button>
+                  </span>
+                ))}
+                <select value="" onChange={e => { const v = e.target.value; if (v && !(form.cause_immediate||[]).includes(v)) setForm({...form, cause_immediate:[...(form.cause_immediate||[]), v]}); }}
+                  style={{ border:'none', background:'transparent', color:'var(--text-3)', fontSize:13, cursor:'pointer', outline:'none', flex:1, minWidth:120 }}>
+                  <option value="">+ Ajouter...</option>
+                  {CAUSES.filter(c => !(form.cause_immediate||[]).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
             <div>
               <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Statut enquête</label>
@@ -328,7 +339,7 @@ export default function SecuriteAccidents() {
                         { label: 'Type événement', key: 'type_evenement', type: 'select', options: listeTypes },
                         { label: 'Date',            key: 'date_evenement', type: 'date' },
                         { label: 'Lieu',            key: 'lieu',           type: 'select', options: listeLieux },
-                        { label: 'Cause immédiate', key: 'cause_immediate',type: 'select', options: ['', ...CAUSES] },
+                        { label: 'Cause(s) immédiate(s)', key: 'cause_immediate', type: 'text', placeholder: 'Cause 1 / Cause 2...' },
                         { label: 'Victime',         key: 'victime',        type: 'text', placeholder: 'Nom, poste...' },
                         { label: 'Témoin(s)',        key: 'temoin',         type: 'text', placeholder: 'Noms...' },
                         { label: 'Jours perdus',    key: 'jours_perdus',   type: 'number' },

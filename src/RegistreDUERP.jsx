@@ -85,7 +85,7 @@ const FORM_INIT = {
   danger: '',
   evenement_declencheur: '',
   dommage_potentiel: '',
-  personnes_exposees: '',
+  personnes_exposees: [],
   gravite: 2,
   probabilite: 2,
   a_mesure_epc: false, mesures_epc: '',
@@ -144,7 +144,7 @@ export default function RegistreDUERP() {
       danger: rowData.danger,
       evenement_declencheur: rowData.evenement_declencheur,
       dommage_potentiel: rowData.dommage_potentiel,
-      personnes_exposees: rowData.personnes_exposees,
+      personnes_exposees: rowData.personnes_exposees,  // kept as-is in DB rows (string)
       gravite: rowData.gravite,
       probabilite: rowData.probabilite,
       criticite: rowData.criticite,
@@ -195,7 +195,7 @@ export default function RegistreDUERP() {
       famille_risque: form.famille_risque || null,
       evenement_declencheur: form.evenement_declencheur || null,
       dommage_potentiel: form.dommage_potentiel || null,
-      personnes_exposees: form.personnes_exposees || null,
+      personnes_exposees: Array.isArray(form.personnes_exposees) ? (form.personnes_exposees.join(' / ') || null) : (form.personnes_exposees || null),
       a_mesure_epc: form.a_mesure_epc,
       mesures_epc: form.mesures_epc || null,
       a_mesure_orga: form.a_mesure_orga,
@@ -444,12 +444,29 @@ export default function RegistreDUERP() {
                 <label style={lbl}>Dommage potentiel</label>
                 <input type="text" value={form.dommage_potentiel} onChange={e => setForm({ ...form, dommage_potentiel: e.target.value })} placeholder="Ex: Fracture, entorse, brûlure..." className="input-modern"/>
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label style={lbl}>Personnes exposées</label>
-                <select value={form.personnes_exposees} onChange={e => setForm({ ...form, personnes_exposees: e.target.value })} className="input-modern">
-                  <option value="">— Sélectionner —</option>
-                  {PERSONNES_EXPOSEES_LIST.map(pe => <option key={pe}>{pe}</option>)}
-                </select>
+                {/* Tags multi-sélection */}
+                <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--bg-input)', padding: '6px 8px', minHeight: 42, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {(form.personnes_exposees || []).map(pe => (
+                    <span key={pe} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(79,99,231,0.15)', border:'1px solid rgba(79,99,231,0.35)', color:'var(--blue)', borderRadius:6, padding:'2px 8px', fontSize:12, fontWeight:600 }}>
+                      {pe}
+                      <button onClick={() => setForm({ ...form, personnes_exposees: form.personnes_exposees.filter(x => x !== pe) })}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'var(--blue)', padding:'0 2px', lineHeight:1, fontSize:14 }}>×</button>
+                    </span>
+                  ))}
+                  <select
+                    value=""
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v && !(form.personnes_exposees || []).includes(v))
+                        setForm({ ...form, personnes_exposees: [...(form.personnes_exposees || []), v] });
+                    }}
+                    style={{ border:'none', background:'transparent', color:'var(--text-3)', fontSize:13, cursor:'pointer', outline:'none', flex:1, minWidth:120 }}>
+                    <option value="">+ Ajouter...</option>
+                    {PERSONNES_EXPOSEES_LIST.filter(pe => !(form.personnes_exposees || []).includes(pe)).map(pe => <option key={pe} value={pe}>{pe}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
           </div>

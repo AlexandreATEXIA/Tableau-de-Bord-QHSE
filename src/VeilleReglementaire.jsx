@@ -175,8 +175,8 @@ export default function VeilleReglementaire() {
             </div>
           ) : (
             <div>
-              <p className="font-bold">Erreur — La Edge Function "veille-auto" doit être déployée sur Supabase</p>
-              <p className="text-xs mt-1 opacity-80">Voir les instructions de déploiement ci-dessous</p>
+              <p className="font-bold">Erreur lors de la veille automatique</p>
+              <p className="text-xs mt-1 opacity-80">{veilleResultat?.message || 'Erreur inconnue'}</p>
             </div>
           )}
         </div>
