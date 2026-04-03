@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, AlertOctagon, RefreshCw, Shield, Filter, X, Save, Grid } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
+import { useToast } from './Toast';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
 const FAMILLES_RISQUES = [
@@ -99,6 +100,7 @@ const FORM_INIT = {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 export default function RegistreDUERP() {
   const { p, isDark } = useTheme();
+  const { toast } = useToast();
   const [risques, setRisques]         = useState([]);
   const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState(null);
@@ -138,13 +140,13 @@ export default function RegistreDUERP() {
   const saveRowDirect = async (rowData) => {
     if (!rowData) return;
     setSaving(rowData.id);
-    await supabase.from('registre_duerp').update({
+    const { error } = await supabase.from('registre_duerp').update({
       unite_travail: rowData.unite_travail,
       famille_risque: rowData.famille_risque,
       danger: rowData.danger,
       evenement_declencheur: rowData.evenement_declencheur,
       dommage_potentiel: rowData.dommage_potentiel,
-      personnes_exposees: rowData.personnes_exposees,  // kept as-is in DB rows (string)
+      personnes_exposees: rowData.personnes_exposees,
       gravite: rowData.gravite,
       probabilite: rowData.probabilite,
       criticite: rowData.criticite,
@@ -162,6 +164,8 @@ export default function RegistreDUERP() {
       date_maj: rowData.date_maj,
     }).eq('id', rowData.id);
     setSaving(null);
+    if (error) toast({ message: `Erreur sauvegarde : ${error.message}`, type: 'error' });
+    else toast({ message: 'Risque sauvegardé', type: 'success' });
   };
 
   // Appelé par onBlur des champs texte (lit le state le plus récent via ref)
@@ -206,25 +210,19 @@ export default function RegistreDUERP() {
       coefficient_reducteur: coeff,
     };
 
-    // Tenter avec tous les champs
-    let { data, error } = await supabase.from('registre_duerp')
+    const { data, error } = await supabase.from('registre_duerp')
       .insert([{ ...baseFields, ...extraFields }]).select();
 
-    // Fallback si colonnes manquantes
-    if (error && (error.message.includes('column') || error.code === '42703')) {
-      const res2 = await supabase.from('registre_duerp').insert([baseFields]).select();
-      data  = res2.data;
-      error = res2.error;
-      if (!error) setSaveError('⚠️ Risque enregistré mais certains champs ignorés (migration SQL non jouée). Lancez le script SQL en bas de page.');
-    }
     if (error) {
       setSaveError(`Erreur : ${error.message}`);
+      toast({ message: `Erreur : ${error.message}`, type: 'error' });
       return;
     }
     if (data?.[0]) {
       setRisques(prev => [...prev, data[0]].sort((a, b) => (b.criticite_resid || b.criticite || 1) - (a.criticite_resid || a.criticite || 1)));
       setShowForm(false);
       setForm({ ...FORM_INIT, unite_travail: listeUT[0] });
+      toast({ message: 'Risque ajouté au DUERP', type: 'success' });
     }
   };
 
@@ -233,6 +231,7 @@ export default function RegistreDUERP() {
     if (!window.confirm('Supprimer ce risque définitivement ?')) return;
     await supabase.from('registre_duerp').delete().eq('id', id);
     setRisques(prev => prev.filter(r => r.id !== id));
+    toast({ message: 'Risque supprimé', type: 'info' });
   };
 
   /* ── KPIs ───────────────────────────────────────────────────────────────── */
@@ -803,26 +802,6 @@ export default function RegistreDUERP() {
             </table>
           </div>
         )}
-      </div>
-
-      {/* ── Panneau migration SQL ────────────────────────────────────────────── */}
-      <div className="glass-panel p-4" style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
-        <p style={{ fontSize: 11, color: p.text3, fontWeight: 600, marginBottom: 8 }}>
-          ⚙️ <span style={{ color: p.blue }}>Migration requise</span> — Exécutez ce SQL dans <strong>Supabase → SQL Editor</strong> pour activer la pondération :
-        </p>
-        <pre style={{ fontSize: 10, color: p.text3, background: p.bgCard2, borderRadius: 6, padding: '8px 12px', overflowX: 'auto', border: '1px solid ' + p.border, lineHeight: 1.6 }}>{`ALTER TABLE registre_duerp
-  ADD COLUMN IF NOT EXISTS famille_risque        TEXT,
-  ADD COLUMN IF NOT EXISTS evenement_declencheur TEXT,
-  ADD COLUMN IF NOT EXISTS dommage_potentiel      TEXT,
-  ADD COLUMN IF NOT EXISTS personnes_exposees     TEXT,
-  ADD COLUMN IF NOT EXISTS a_mesure_epc           BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS mesures_epc            TEXT,
-  ADD COLUMN IF NOT EXISTS a_mesure_orga          BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS mesures_orga           TEXT,
-  ADD COLUMN IF NOT EXISTS a_mesure_epi           BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS mesures_epi            TEXT,
-  ADD COLUMN IF NOT EXISTS criticite_resid        INTEGER,
-  ADD COLUMN IF NOT EXISTS coefficient_reducteur  NUMERIC(4,2);`}</pre>
       </div>
 
     </div>

@@ -5,13 +5,16 @@ import App from './App.jsx'
 import { EmployesProvider } from './EmployesContext.jsx'
 import { ThemeProvider } from './ThemeContext.jsx'
 import { ConfigProvider } from './ConfigContext.jsx'
+import { ToastProvider } from './Toast.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
       <ConfigProvider>
         <EmployesProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </EmployesProvider>
       </ConfigProvider>
     </ThemeProvider>

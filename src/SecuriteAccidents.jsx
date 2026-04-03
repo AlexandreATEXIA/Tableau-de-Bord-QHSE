@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock, X, Save, ChevronDown, ChevronUp, Activity, Calendar } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
+import { useToast } from './Toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
 const TYPES_EVT_DEFAULT = ["Presqu'accident", "Soins (sans arrêt)", "Accident avec arrêt", "Maladie Professionnelle", "Incident matériel"];
@@ -30,6 +31,7 @@ const HEURES_AN = 1607;
 
 export default function SecuriteAccidents() {
   const { p, isDark } = useTheme();
+  const { toast } = useToast();
   const [accidents, setAccidents]   = useState([]);
   const [listeTypes, setListeTypes] = useState(TYPES_EVT_DEFAULT);
   const [listeLieux, setListeLieux] = useState(LIEUX_DEFAULT);
@@ -73,16 +75,22 @@ export default function SecuriteAccidents() {
   const declarerEvenement = async () => {
     const payload = { ...form, cause_immediate: Array.isArray(form.cause_immediate) ? form.cause_immediate.join(' / ') : form.cause_immediate };
     const { data, error } = await supabase.from('securite_accidents').insert([payload]).select();
-    if (!error && data) {
+    if (error) {
+      toast({ message: `Erreur : ${error.message}`, type: 'error' });
+      return;
+    }
+    if (data) {
       setAccidents([data[0], ...accidents]);
       setShowForm(false);
       setForm({ date_evenement: new Date().toISOString().split('T')[0], type_evenement: "Presqu'accident", lieu: 'Atelier', description: '', cause_immediate: [], victime: '', temoin: '', jours_perdus: 0, statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '' });
+      toast({ message: 'Événement déclaré', type: 'success' });
     }
   };
 
   const deleteRow = async (id) => {
     await supabase.from('securite_accidents').delete().eq('id', id);
     setAccidents(accidents.filter(a => a.id !== id));
+    toast({ message: 'Événement supprimé', type: 'info' });
   };
 
   // ── KPIs ─────────────────────────────────────────────────────────────────

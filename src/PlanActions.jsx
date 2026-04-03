@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
+import { useToast } from './Toast';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
 const ORIGINES = [
@@ -129,6 +130,7 @@ const mkForm = (domaines, origines) => ({
 /* ══════════════════════════════════════════════════════════════════════════════ */
 export default function PlanActions() {
   const { p, isDark } = useTheme();
+  const { toast } = useToast();
   const [actions, setActions]       = useState([]);
   const [listeDomaines, setDomaines]= useState(DOMAINES_DEFAULT);
   const [loading, setLoading]       = useState(true);
@@ -210,23 +212,17 @@ export default function PlanActions() {
       date_verification_efficacite: form.date_verification_efficacite || null,
       resultat_efficacite: form.resultat_efficacite || null,
     };
-    // Tenter avec tous les champs d'abord
-    let { data, error } = await supabase.from('plan_actions').insert([{ ...toInsert, ...extraFields }]).select();
-    // Si erreur de colonne manquante → réessayer avec les champs de base uniquement
-    if (error && (error.message.includes('column') || error.code === '42703')) {
-      const res2 = await supabase.from('plan_actions').insert([toInsert]).select();
-      data  = res2.data;
-      error = res2.error;
-      if (!error) setSaveError('⚠️ Action enregistrée mais certains champs ignorés (migration SQL non jouée). Lancez le script SQL en bas de page.');
-    }
+    const { data, error } = await supabase.from('plan_actions').insert([{ ...toInsert, ...extraFields }]).select();
     if (error) {
       setSaveError(`Erreur : ${error.message}`);
+      toast({ message: `Erreur : ${error.message}`, type: 'error' });
       return;
     }
     if (data?.[0]) {
       setActions(prev => [...prev, data[0]]);
       setShowForm(false);
       setForm(mkForm(listeDomaines, ORIGINES));
+      toast({ message: 'Action ajoutée au plan', type: 'success' });
     }
   };
 
@@ -235,6 +231,7 @@ export default function PlanActions() {
     if (!window.confirm('Supprimer cette action ?')) return;
     await supabase.from('plan_actions').delete().eq('id', id);
     setActions(prev => prev.filter(r => r.id !== id));
+    toast({ message: 'Action supprimée', type: 'info' });
   };
 
   /* ── KPIs ───────────────────────────────────────────────────────────────── */
