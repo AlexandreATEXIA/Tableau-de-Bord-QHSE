@@ -4,6 +4,7 @@ import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock,
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
+import { useConfig } from './ConfigContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
 const TYPES_EVT_DEFAULT = ["Presqu'accident", "Soins (sans arrêt)", "Accident avec arrêt", "Maladie Professionnelle", "Incident matériel"];
@@ -26,12 +27,10 @@ const STATUT_STYLE = {
   "Clôturée":           { color: '#10B981', badge: 'badge-green' },
 };
 
-const EFFECTIF = 50;
-const HEURES_AN = 1607;
-
 export default function SecuriteAccidents() {
   const { p, isDark } = useTheme();
   const { toast } = useToast();
+  const { config } = useConfig();
   const [accidents, setAccidents]   = useState([]);
   const [listeTypes, setListeTypes] = useState(TYPES_EVT_DEFAULT);
   const [listeLieux, setListeLieux] = useState(LIEUX_DEFAULT);
@@ -112,12 +111,12 @@ export default function SecuriteAccidents() {
     const actifs      = accidents.filter(a => !a.archived_at);
     const accArret    = actifs.filter(a => a.type_evenement === 'Accident avec arrêt');
     const jours       = actifs.reduce((s, a) => s + (a.jours_perdus || 0), 0);
-    const heures      = EFFECTIF * HEURES_AN;
+    const heures      = (config.effectif || 50) * (config.h_an || 1607);
     const TF          = accArret.length > 0 ? ((accArret.length * 1000000) / heures).toFixed(2) : '0.00';
     const TG          = jours > 0 ? ((jours * 1000) / heures).toFixed(2) : '0.00';
     const nonClotures = actifs.filter(a => a.statut_enquete !== 'Clôturée' && a.type_evenement !== "Presqu'accident");
     return { total: actifs.length, accArret: accArret.length, jours, TF, TG, nonClotures: nonClotures.length, presquAcc: actifs.filter(a => a.type_evenement === "Presqu'accident").length };
-  }, [accidents]);
+  }, [accidents, config]);
 
   // ── Graphique par mois ────────────────────────────────────────────────────
   const chartData = useMemo(() => {

@@ -41,14 +41,14 @@ export default function AgendaSemaine({ onNavigate }) {
     const now = new Date().toISOString().split('T')[0];
 
     const [r1, r2, r3, r4] = await Promise.all([
-      // Actions PDCA à échéance dans 30j ou en retard
+      // Actions PDCA à échéance dans 30j ou en retard (actives seulement)
       supabase.from('plan_actions').select('id,action,echeance,pilote,statut,domaine')
-        .lte('echeance', horizonStr).not('statut', 'in', '("Terminé","Annulé")').order('echeance'),
+        .lte('echeance', horizonStr).not('statut', 'in', '("Terminé","Annulé")').is('archived_at', null).order('echeance'),
       // Audits planifiés dans 30j
       supabase.from('qualite_audits').select('id,type_audit,date_audit,auditeur,statut')
         .lte('date_audit', horizonStr).gte('date_audit', now).order('date_audit'),
-      // Habilitations (on calcule l'expiration)
-      supabase.from('habilitations').select('id,employe_id,type_habilitation,obtention,validiteAns'),
+      // Habilitations (actives seulement)
+      supabase.from('habilitations').select('id,employe_id,type_habilitation,obtention,validiteAns').is('archived_at', null),
       // Analyses risque à revoir (date_analyse dans le passé)
       supabase.from('analyses_risque').select('id,titre_chantier,date_analyse,statut').order('date_analyse', { ascending: false }).limit(20),
     ]);

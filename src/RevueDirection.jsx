@@ -1,6 +1,7 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
+import { useConfig } from './ConfigContext';
 import {
   FileText, RefreshCw, Download, CheckCircle, AlertTriangle,
   Clock, TrendingUp, TrendingDown, Shield, Users, Activity,
@@ -20,6 +21,7 @@ function getStatutColor(val, seuil1, seuil2, inverse = false) {
 
 export default function RevueDirection() {
   const { p, isDark } = useTheme();
+  const { config } = useConfig();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [annee, setAnnee]     = useState(new Date().getFullYear());
@@ -30,11 +32,11 @@ export default function RevueDirection() {
   const chargerDonnees = async () => {
     setLoading(true);
     const [r1, r2, r3, r4, r5, r6, r7, r8] = await Promise.all([
-      supabase.from('securite_accidents').select('*').order('date_evenement'),
-      supabase.from('plan_actions').select('*'),
-      supabase.from('habilitations').select('*'),
-      supabase.from('registre_duerp').select('*'),
-      supabase.from('qualite_nc').select('*').order('date_nc'),
+      supabase.from('securite_accidents').select('*').is('archived_at', null).order('date_evenement'),
+      supabase.from('plan_actions').select('*').is('archived_at', null),
+      supabase.from('habilitations').select('*').is('archived_at', null),
+      supabase.from('registre_duerp').select('*').is('archived_at', null),
+      supabase.from('qualite_nc').select('*').is('archived_at', null).order('date_nc'),
       supabase.from('qualite_audits').select('*'),
       supabase.from('qualite_satisfaction').select('*'),
       supabase.from('qualite_qvt').select('*'),
@@ -58,8 +60,9 @@ export default function RevueDirection() {
 
     const accArret  = accidents.filter(a => a.type_evenement === 'Accident avec arrêt');
     const joursPerdus = accidents.reduce((s, a) => s + (a.jours_perdus || 0), 0);
-    const TF = accArret.length > 0 ? ((accArret.length * 1000000) / (50 * 1607)).toFixed(2) : '0.00';
-    const TG = joursPerdus > 0   ? ((joursPerdus * 1000)        / (50 * 1607)).toFixed(2) : '0.00';
+    const heures = (config.effectif || 50) * (config.h_an || 1607);
+    const TF = accArret.length > 0 ? ((accArret.length * 1000000) / heures).toFixed(2) : '0.00';
+    const TG = joursPerdus > 0   ? ((joursPerdus * 1000)        / heures).toFixed(2) : '0.00';
 
     const actTerminees  = actions.filter(a => a.statut?.includes('Terminé'));
     const actRetard     = actions.filter(a => a.echeance && !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé') && diffJ(a.echeance) < 0);
@@ -120,7 +123,7 @@ export default function RevueDirection() {
       totalNCs: ncs.length, totalAudits: audits.length,
       totalHabs: habilitations.length, totalAccidents: accidents.length,
     };
-  }, [data]);
+  }, [data, config]);
 
   // ── Génération HTML rapport imprimable ────────────────────────────────────
   const genererRapport = () => {

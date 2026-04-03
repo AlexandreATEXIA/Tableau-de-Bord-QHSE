@@ -16,7 +16,7 @@ function buildHTML(data, opts, cfg) {
 
   const accArret   = accidents.filter(a => a.type_evenement === 'Accident avec arrêt');
   const jours      = accidents.reduce((s, a) => s + (a.jours_perdus || 0), 0);
-  const heures     = (cfg.effectif || 50) * 1607;
+  const heures     = (cfg.effectif || 50) * (cfg.h_an || 1607);
   const TF         = accArret.length > 0 ? ((accArret.length * 1000000) / heures).toFixed(2) : '0.00';
   const TG         = jours > 0 ? ((jours * 1000) / heures).toFixed(2) : '0.00';
 
@@ -254,11 +254,11 @@ export default function RapportPDF() {
   const generer = async () => {
     setLoading(true); setSuccess(false);
     const [r1,r2,r3,r4,r5,r6,r7] = await Promise.all([
-      supabase.from('securite_accidents').select('*').order('date_evenement',{ascending:false}),
-      supabase.from('plan_actions').select('*'),
-      supabase.from('habilitations').select('*').order('employe'),
-      supabase.from('registre_duerp').select('*').order('criticite',{ascending:false}),
-      supabase.from('qualite_nc').select('*').order('date_nc',{ascending:false}),
+      supabase.from('securite_accidents').select('*').is('archived_at', null).order('date_evenement',{ascending:false}),
+      supabase.from('plan_actions').select('*').is('archived_at', null),
+      supabase.from('habilitations').select('*').is('archived_at', null).order('employe'),
+      supabase.from('registre_duerp').select('*').is('archived_at', null).order('criticite',{ascending:false}),
+      supabase.from('qualite_nc').select('*').is('archived_at', null).order('date_nc',{ascending:false}),
       supabase.from('qualite_satisfaction').select('*').order('date_enquete'),
       supabase.from('qualite_qvt').select('*'),
     ]);
