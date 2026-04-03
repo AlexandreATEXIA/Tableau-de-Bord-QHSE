@@ -1,6 +1,6 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, AlertOctagon, RefreshCw, Shield, Filter, X, Save, Grid } from 'lucide-react';
+import { Plus, Trash2, AlertOctagon, RefreshCw, Shield, Filter, X, Save, Grid, Archive, RotateCcw, History } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
@@ -111,6 +111,7 @@ export default function RegistreDUERP() {
   const [listeUT, setListeUT]         = useState(LISTE_UT_DEFAULT);
   const [form, setForm]               = useState({ ...FORM_INIT });
   const [saveError, setSaveError]     = useState('');
+  const [showArchive, setShowArchive] = useState(false);
   const risquesRef                    = useRef(risques);
   useEffect(() => { risquesRef.current = risques; }, [risques]);
 
@@ -122,6 +123,20 @@ export default function RegistreDUERP() {
     const { data } = await supabase.from('registre_duerp').select('*').order('criticite', { ascending: false });
     if (data) setRisques(data);
     setLoading(false);
+  };
+
+  /* ── Archivage ──────────────────────────────────────────────────────────── */
+  const archiveRow = async (id) => {
+    const now = new Date().toISOString();
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('registre_duerp').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
+    setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: now } : r));
+    toast({ message: 'Risque archivé dans l\'historique', type: 'info' });
+  };
+  const restoreRow = async (id) => {
+    await supabase.from('registre_duerp').update({ archived_at: null, archived_by: null }).eq('id', id);
+    setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: null } : r));
+    toast({ message: 'Risque restauré', type: 'success' });
   };
 
   /* ── Mise à jour locale (état React) ────────────────────────────────────── */
@@ -249,6 +264,7 @@ export default function RegistreDUERP() {
 
   /* ── Filtres ────────────────────────────────────────────────────────────── */
   const risquesFiltres = useMemo(() => risques.filter(r => {
+    if (showArchive ? !r.archived_at : r.archived_at) return false;
     const s = r.criticite_resid || r.criticite || 1;
     if (filtreUT !== 'Tous' && r.unite_travail !== filtreUT) return false;
     if (filtreNiveau === 'Inacceptable'   && s < 13) return false;
@@ -256,7 +272,7 @@ export default function RegistreDUERP() {
     if (filtreNiveau === 'À surveiller'   && (s < 5  || s >= 9))  return false;
     if (filtreNiveau === 'Acceptable'     && s >= 5) return false;
     return true;
-  }), [risques, filtreUT, filtreNiveau]);
+  }), [risques, filtreUT, filtreNiveau, showArchive]);
 
   /* ── Styles helpers ─────────────────────────────────────────────────────── */
   const inp = { padding: '5px 8px', fontSize: 12, background: p.bgInput, border: '1px solid ' + p.borderInput, borderRadius: 6, color: p.text1, fontFamily: 'inherit', outline: 'none', width: '100%' };
@@ -339,6 +355,14 @@ export default function RegistreDUERP() {
         <div>
           <h2 className="page-title flex items-center gap-3"><Shield size={26} className="text-amber-400"/> Registre DUERP</h2>
           <p className="page-subtitle">Évaluation et maîtrise des risques — Pondération EPC / Organisation / EPI</p>
+          <div style={{ display:'flex', gap:6, marginTop:8 }}>
+            <button onClick={() => setShowArchive(false)} style={{ fontSize:12, fontWeight:700, padding:'3px 14px', borderRadius:100, border:'1px solid', cursor:'pointer', background:!showArchive?'rgba(245,158,11,0.18)':'transparent', borderColor:!showArchive?'rgba(245,158,11,0.5)':'rgba(255,255,255,0.1)', color:!showArchive?'#F59E0B':'var(--text-4)' }}>
+              Actifs ({risques.filter(r=>!r.archived_at).length})
+            </button>
+            <button onClick={() => setShowArchive(true)} style={{ fontSize:12, fontWeight:700, padding:'3px 14px', borderRadius:100, border:'1px solid', cursor:'pointer', background:showArchive?'rgba(100,116,139,0.18)':'transparent', borderColor:showArchive?'rgba(100,116,139,0.5)':'rgba(255,255,255,0.1)', color:showArchive?'#94A3B8':'var(--text-4)' }}>
+              <History size={11} style={{display:'inline',marginRight:4}}/>Historique ({risques.filter(r=>r.archived_at).length})
+            </button>
+          </div>
         </div>
         <div className="flex gap-3 flex-wrap">
           <GestionListes
@@ -348,9 +372,9 @@ export default function RegistreDUERP() {
           />
           <button onClick={() => setShowMatrice(v => !v)} className="btn-secondary"><Grid size={16}/> Matrice</button>
           <button onClick={fetchRisques} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          <button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#F59E0B', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
+          {!showArchive && <button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#F59E0B', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
             <Plus size={16}/> Identifier un risque
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -788,11 +812,16 @@ export default function RegistreDUERP() {
                           placeholder="Pilote..." style={{ ...inp, fontSize: 11 }}/>
                       </td>
 
-                      {/* Supprimer */}
+                      {/* Archive / Restaurer */}
                       <td className="text-center">
                         {saving === row.id
                           ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/>
-                          : <button onClick={() => deleteRow(row.id)} style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-red-400"><Trash2 size={14}/></button>
+                          : showArchive
+                            ? <div style={{ display:'flex', gap:2, justifyContent:'center' }}>
+                                <button onClick={() => restoreRow(row.id)} title="Restaurer" style={{ color:'#10B981', background:'none', border:'none', cursor:'pointer', padding:5 }}><RotateCcw size={13}/></button>
+                                <button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" style={{ color:'#EF4444', background:'none', border:'none', cursor:'pointer', padding:5 }}><Trash2 size={13}/></button>
+                              </div>
+                            : <button onClick={() => archiveRow(row.id)} title="Archiver" style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-amber-400"><Archive size={14}/></button>
                         }
                       </td>
                     </tr>
