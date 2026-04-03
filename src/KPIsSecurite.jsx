@@ -9,51 +9,63 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, ReferenceLine, LineChart, Line, Cell
 } from 'recharts';
+import { useConfig } from './ConfigContext';
 
-const H_AN = 1607;
+const OBJ_DEFAULTS = { TF:10, TG:1, tauxCloture:70, tauxHabs:90, tauxMaitrise:70, accArret:0, actionsRetard:0, satisfaction:7 };
 
 function calcExp(obt, val) {
   const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
 }
 
-// Charger objectifs depuis localStorage
-function loadObjectifs() {
-  try {
-    return JSON.parse(localStorage.getItem('kpi_objectifs') || 'null') || {
-      TF: 10, TG: 1, tauxCloture: 70, tauxHabs: 90, tauxMaitrise: 70,
-      accArret: 0, actionsRetard: 0, satisfaction: 7,
-    };
-  } catch { return { TF:10, TG:1, tauxCloture:70, tauxHabs:90, tauxMaitrise:70, accArret:0, actionsRetard:0, satisfaction:7 }; }
-}
-
 export default function KPIsSecurite() {
   const { p, isDark } = useTheme();
-  const [data, setData]         = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [effectif, setEffectif] = useState(50);
-  const [objectifs, setObjectifs] = useState(loadObjectifs);
-  const [showObj, setShowObj]   = useState(false);
-  const [objEdit, setObjEdit]   = useState(loadObjectifs);
+  const { config, saveConfig } = useConfig();
+  const [data, setData]           = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [objectifs, setObjectifs] = useState(OBJ_DEFAULTS);
+  const [showObj, setShowObj]     = useState(false);
+  const [objEdit, setObjEdit]     = useState(OBJ_DEFAULTS);
+
+  const effectif = config.effectif;
+  const H_AN     = config.h_an;
 
   useEffect(() => { charger(); }, []);
 
   const charger = async () => {
     setLoading(true);
-    const [r1,r2,r3,r4,r5,r6] = await Promise.all([
+    const [r1,r2,r3,r4,r5,r6,r7] = await Promise.all([
       supabase.from('securite_accidents').select('*').order('date_evenement'),
       supabase.from('plan_actions').select('id,statut,echeance,domaine'),
       supabase.from('habilitations').select('id,obtention,validiteAns'),
       supabase.from('registre_duerp').select('id,criticite'),
       supabase.from('qualite_satisfaction').select('note_globale,date_enquete'),
       supabase.from('qualite_nc').select('id,statut_nc,date_nc'),
+      supabase.from('kpi_objectifs').select('*').eq('id', 1).single(),
     ]);
     setData({ accidents:r1.data||[], actions:r2.data||[], habs:r3.data||[], risques:r4.data||[], sat:r5.data||[], ncs:r6.data||[] });
+    if (r7.data) {
+      const obj = {
+        TF: r7.data.tf ?? OBJ_DEFAULTS.TF, TG: r7.data.tg ?? OBJ_DEFAULTS.TG,
+        tauxCloture: r7.data.taux_cloture ?? OBJ_DEFAULTS.tauxCloture,
+        tauxHabs: r7.data.taux_habs ?? OBJ_DEFAULTS.tauxHabs,
+        tauxMaitrise: r7.data.taux_maitrise ?? OBJ_DEFAULTS.tauxMaitrise,
+        accArret: r7.data.acc_arret ?? OBJ_DEFAULTS.accArret,
+        actionsRetard: r7.data.actions_retard ?? OBJ_DEFAULTS.actionsRetard,
+        satisfaction: r7.data.satisfaction ?? OBJ_DEFAULTS.satisfaction,
+      };
+      setObjectifs(obj); setObjEdit(obj);
+    }
     setLoading(false);
   };
 
-  const sauvegarderObjectifs = () => {
+  const sauvegarderObjectifs = async () => {
     setObjectifs(objEdit);
-    localStorage.setItem('kpi_objectifs', JSON.stringify(objEdit));
+    await supabase.from('kpi_objectifs').update({
+      tf: objEdit.TF, tg: objEdit.TG, taux_cloture: objEdit.tauxCloture,
+      taux_habs: objEdit.tauxHabs, taux_maitrise: objEdit.tauxMaitrise,
+      acc_arret: objEdit.accArret, actions_retard: objEdit.actionsRetard,
+      satisfaction: objEdit.satisfaction, updated_at: new Date().toISOString(),
+    }).eq('id', 1);
     setShowObj(false);
   };
 
@@ -209,7 +221,8 @@ export default function KPIsSecurite() {
         <div className="flex items-center gap-3">
           <div style={{display:'flex',alignItems:'center',gap:8,background:p.whiteFaint2,border:'1px solid '+p.border,borderRadius:10,padding:'7px 14px'}}>
             <label style={{fontSize:12,color:p.text2,fontWeight:600}}>Effectif :</label>
-            <input type="number" min="1" value={effectif} onChange={e=>setEffectif(Number(e.target.value))}
+            <input type="number" min="1" value={effectif}
+              onChange={e => saveConfig({ effectif: Number(e.target.value) })}
               style={{width:52,background:'transparent',color:p.text1,fontSize:14,fontWeight:800,outline:'none',textAlign:'center',border:'none',fontFamily:'inherit'}}/>
             <span style={{fontSize:11,color:p.text4}}>pers.</span>
           </div>
