@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme, ThemeToggleBtn } from './ThemeContext';
 import {
   LayoutDashboard, ShieldAlert, CheckCircle, Leaf, Users,
   FileText, HeartPulse, FileDown, Mail, BarChart2,
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
-  PieChart, ClipboardList, HardHat, Menu, X
+  PieChart, ClipboardList, HardHat, Menu, X, LogOut
 } from 'lucide-react';
+import { supabase } from './supabaseClient';
+import LoginPage from './LoginPage';
+import QuickActions from './QuickActions';
 
 import DashboardComex        from './DashboardComex';
 import RegistreDUERP         from './RegistreDUERP';
@@ -57,9 +60,23 @@ const MENU = [
 
 export default function App() {
   const { theme } = useTheme();
-  const [activeTab, setActiveTab]   = useState('comex');
-  const [animKey, setAnimKey]       = useState(0);
+  const [activeTab, setActiveTab]     = useState('comex');
+  const [animKey, setAnimKey]         = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [session, setSession]         = useState(undefined); // undefined = loading
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return (
+    <div style={{ height:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0B1120' }}>
+      <div style={{ width:40, height:40, border:'3px solid rgba(79,99,231,0.3)', borderTopColor:'#4F63E7', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+    </div>
+  );
+  if (!session) return <LoginPage />;
 
   const handleTab = (id) => {
     if (id === activeTab) return;
@@ -146,12 +163,20 @@ export default function App() {
 
         {/* User + theme toggle */}
         <div style={{ padding:'12px 14px', borderBottom: 'env(safe-area-inset-bottom) solid transparent', paddingBottom:'max(12px, calc(env(safe-area-inset-bottom) + 12px))', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#4F63E7,#06B6D4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'white', flexShrink:0 }}>Y</div>
+          <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#4F63E7,#06B6D4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'white', flexShrink:0 }}>
+            {session?.user?.email?.[0]?.toUpperCase() || 'Y'}
+          </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Yoann</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {session?.user?.email?.split('@')[0] || 'Yoann'}
+            </div>
             <div style={{ fontSize:11, color:'var(--text-3)' }}>Responsable QHSE</div>
           </div>
           <ThemeToggleBtn/>
+          <button onClick={() => supabase.auth.signOut()} title="Se déconnecter"
+            style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <LogOut size={14}/>
+          </button>
         </div>
       </aside>
 
@@ -188,9 +213,9 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <main style={{ flex:1, overflowY:'auto', padding:'16px', paddingLeft:'max(16px, env(safe-area-inset-left))', paddingRight:'max(16px, env(safe-area-inset-right))', background:'var(--bg-page)', transition:'background 0.25s' }}>
+        <main style={{ flex:1, overflowY:'auto', padding:'16px', paddingLeft:'max(16px, env(safe-area-inset-left))', paddingRight:'max(16px, env(safe-area-inset-right))', background:'var(--bg-page)', transition:'background 0.25s', paddingBottom:'max(80px, calc(env(safe-area-inset-bottom) + 80px))' }}>
           <div key={animKey} className="animate-fade-up">
-            {activeTab === 'comex'         && <DashboardComex />}
+            {activeTab === 'comex'         && <DashboardComex onNavigate={handleTab} />}
             {activeTab === 'duerp'         && <RegistreDUERP />}
             {activeTab === 'accidents'     && <SecuriteAccidents />}
             {activeTab === 'qualite'       && <QualiteAudits />}
@@ -210,6 +235,9 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {/* Bouton actions rapides flottant */}
+      <QuickActions onNavigate={handleTab} />
     </div>
   );
 }
