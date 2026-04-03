@@ -1,6 +1,6 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock, X, Save, ChevronDown, ChevronUp, Activity, Calendar } from 'lucide-react';
+import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock, X, Save, ChevronDown, ChevronUp, Activity, Calendar, Archive, RotateCcw, History } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
@@ -39,6 +39,7 @@ export default function SecuriteAccidents() {
   const [saving, setSaving]         = useState(null);
   const [showForm, setShowForm]     = useState(false);
   const [expanded, setExpanded]     = useState(null);
+  const [showArchive, setShowArchive] = useState(false);
   const [form, setForm]             = useState({
     date_evenement: new Date().toISOString().split('T')[0],
     type_evenement: "Presqu'accident",
@@ -90,7 +91,20 @@ export default function SecuriteAccidents() {
   const deleteRow = async (id) => {
     await supabase.from('securite_accidents').delete().eq('id', id);
     setAccidents(accidents.filter(a => a.id !== id));
-    toast({ message: 'Événement supprimé', type: 'info' });
+    toast({ message: 'Événement supprimé définitivement', type: 'info' });
+  };
+
+  const archiveRow = async (id) => {
+    const now = new Date().toISOString();
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('securite_accidents').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
+    setAccidents(prev => prev.map(a => a.id === id ? { ...a, archived_at: now } : a));
+    toast({ message: 'Événement archivé', type: 'info' });
+  };
+  const restoreRow = async (id) => {
+    await supabase.from('securite_accidents').update({ archived_at: null, archived_by: null }).eq('id', id);
+    setAccidents(prev => prev.map(a => a.id === id ? { ...a, archived_at: null } : a));
+    toast({ message: 'Événement restauré', type: 'success' });
   };
 
   // ── KPIs ─────────────────────────────────────────────────────────────────
@@ -128,6 +142,14 @@ export default function SecuriteAccidents() {
             <HeartPulse size={26} className="text-red-400"/> Sécurité & Accidents
           </h2>
           <p className="page-subtitle">Registre des événements — Déclaration, enquête et suivi</p>
+          <div style={{ display:'flex', gap:6, marginTop:8 }}>
+            <button onClick={() => setShowArchive(false)} style={{ fontSize:12, fontWeight:700, padding:'3px 14px', borderRadius:100, border:'1px solid', cursor:'pointer', background:!showArchive?'rgba(239,68,68,0.18)':'transparent', borderColor:!showArchive?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.1)', color:!showArchive?'#F87171':'var(--text-4)' }}>
+              Actifs ({accidents.filter(a=>!a.archived_at).length})
+            </button>
+            <button onClick={() => setShowArchive(true)} style={{ fontSize:12, fontWeight:700, padding:'3px 14px', borderRadius:100, border:'1px solid', cursor:'pointer', background:showArchive?'rgba(100,116,139,0.18)':'transparent', borderColor:showArchive?'rgba(100,116,139,0.5)':'rgba(255,255,255,0.1)', color:showArchive?'#94A3B8':'var(--text-4)' }}>
+              <History size={11} style={{display:'inline',marginRight:4}}/>Historique ({accidents.filter(a=>a.archived_at).length})
+            </button>
+          </div>
         </div>
         <div className="flex gap-3">
           <GestionListes
@@ -308,7 +330,7 @@ export default function SecuriteAccidents() {
           </div>
         ) : (
           <div className="divide-y divide-white/5">
-            {accidents.map((row) => {
+            {accidents.filter(a => showArchive ? !!a.archived_at : !a.archived_at).map((row) => {
               const typeStyle   = TYPE_STYLE[row.type_evenement]   || TYPE_STYLE["Presqu'accident"];
               const statutStyle = STATUT_STYLE[row.statut_enquete] || STATUT_STYLE['À lancer'];
               const isExpanded  = expanded === row.id;
@@ -334,9 +356,14 @@ export default function SecuriteAccidents() {
                       <button onClick={() => setExpanded(isExpanded ? null : row.id)} className="text-slate-500 hover:text-white transition-colors p-1.5 rounded hover:bg-white/5">
                         {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                       </button>
-                      <button onClick={() => deleteRow(row.id)} className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-white/5">
-                        <Trash2 size={15}/>
-                      </button>
+                      {showArchive ? (
+                        <>
+                          <button onClick={() => restoreRow(row.id)} title="Restaurer" className="text-green-500 hover:text-green-400 transition-colors p-1.5 rounded hover:bg-white/5"><RotateCcw size={15}/></button>
+                          <button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-white/5"><Trash2 size={15}/></button>
+                        </>
+                      ) : (
+                        <button onClick={() => archiveRow(row.id)} title="Archiver" className="text-slate-600 hover:text-amber-400 transition-colors p-1.5 rounded hover:bg-white/5"><Archive size={15}/></button>
+                      )}
                     </div>
                   </div>
 

@@ -2,7 +2,7 @@ import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus, Trash2, RefreshCw, Filter, CheckCircle, AlertTriangle,
-  Clock, Target, Save, X, TrendingUp, Euro
+  Clock, Target, Save, X, TrendingUp, Euro, Archive, RotateCcw, History
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
@@ -142,6 +142,7 @@ export default function PlanActions() {
   const [filtreRetard, setFR]       = useState(false);
   const [form, setForm]             = useState(() => mkForm(DOMAINES_DEFAULT, ORIGINES));
   const [saveError, setSaveError]   = useState('');
+  const [showArchive, setShowArchive] = useState(false);
   const actionsRef                  = useRef(actions);
   useEffect(() => { actionsRef.current = actions; }, [actions]);
 
@@ -153,6 +154,20 @@ export default function PlanActions() {
     const { data } = await supabase.from('plan_actions').select('*').order('id', { ascending: true });
     if (data) setActions(data);
     setLoading(false);
+  };
+
+  /* ── Archivage ──────────────────────────────────────────────────────────── */
+  const archiveRow = async (id) => {
+    const now = new Date().toISOString();
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('plan_actions').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
+    setActions(prev => prev.map(a => a.id === id ? { ...a, archived_at: now } : a));
+    toast({ message: 'Action archivée', type: 'info' });
+  };
+  const restoreRow = async (id) => {
+    await supabase.from('plan_actions').update({ archived_at: null, archived_by: null }).eq('id', id);
+    setActions(prev => prev.map(a => a.id === id ? { ...a, archived_at: null } : a));
+    toast({ message: 'Action restaurée', type: 'success' });
   };
 
   /* ── Update local ───────────────────────────────────────────────────────── */
@@ -248,12 +263,13 @@ export default function PlanActions() {
 
   /* ── Filtres ────────────────────────────────────────────────────────────── */
   const actionsFiltrees = useMemo(() => actions.filter(a => {
+    if (showArchive ? !a.archived_at : a.archived_at) return false;
     if (filtreDomaine !== 'Tous' && a.domaine      !== filtreDomaine) return false;
     if (filtreStatut  !== 'Tous' && a.statut       !== filtreStatut)  return false;
     if (filtreType    !== 'Tous' && a.type_action  !== filtreType)    return false;
     if (filtreRetard  && !(diffJours(a.echeance) < 0 && a.statut !== 'Terminé' && a.statut !== 'Annulé')) return false;
     return true;
-  }), [actions, filtreDomaine, filtreStatut, filtreType, filtreRetard]);
+  }), [actions, filtreDomaine, filtreStatut, filtreType, filtreRetard, showArchive]);
 
   /* ── Styles helpers ─────────────────────────────────────────────────────── */
   const inp = { padding: '5px 8px', fontSize: 12, background: p.bgInput, border: '1px solid ' + p.borderInput, borderRadius: 6, color: p.text1, fontFamily: 'inherit', outline: 'none', width: '100%' };
@@ -268,6 +284,14 @@ export default function PlanActions() {
         <div>
           <h2 className="page-title flex items-center gap-3"><Target size={26} className="text-blue-400"/> Plan d'Actions Global</h2>
           <p className="page-subtitle">Actions correctives, préventives et d'amélioration — PDCA</p>
+          <div style={{ display:'flex', gap:6, marginTop:8 }}>
+            <button onClick={() => setShowArchive(false)} style={{ fontSize:12, fontWeight:700, padding:'3px 14px', borderRadius:100, border:'1px solid', cursor:'pointer', background:!showArchive?'rgba(59,130,246,0.18)':'transparent', borderColor:!showArchive?'rgba(59,130,246,0.5)':'rgba(255,255,255,0.1)', color:!showArchive?'#60A5FA':'var(--text-4)' }}>
+              Actives ({actions.filter(a=>!a.archived_at).length})
+            </button>
+            <button onClick={() => setShowArchive(true)} style={{ fontSize:12, fontWeight:700, padding:'3px 14px', borderRadius:100, border:'1px solid', cursor:'pointer', background:showArchive?'rgba(100,116,139,0.18)':'transparent', borderColor:showArchive?'rgba(100,116,139,0.5)':'rgba(255,255,255,0.1)', color:showArchive?'#94A3B8':'var(--text-4)' }}>
+              <History size={11} style={{display:'inline',marginRight:4}}/>Historique ({actions.filter(a=>a.archived_at).length})
+            </button>
+          </div>
         </div>
         <div className="flex gap-3">
           <GestionListes
@@ -276,7 +300,7 @@ export default function PlanActions() {
             storageKey="plan_actions"
           />
           <button onClick={fetchActions} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouvelle action</button>
+          {!showArchive && <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouvelle action</button>}
         </div>
       </header>
 
@@ -650,11 +674,16 @@ export default function PlanActions() {
                         )}
                       </td>
 
-                      {/* Supprimer */}
+                      {/* Archive / Restaurer */}
                       <td className="text-center">
                         {saving === row.id
                           ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/>
-                          : <button onClick={() => deleteRow(row.id)} style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-red-400"><Trash2 size={14}/></button>
+                          : showArchive
+                            ? <div style={{ display:'flex', gap:2, justifyContent:'center' }}>
+                                <button onClick={() => restoreRow(row.id)} title="Restaurer" style={{ color:'#10B981', background:'none', border:'none', cursor:'pointer', padding:5 }}><RotateCcw size={13}/></button>
+                                <button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" style={{ color:'#EF4444', background:'none', border:'none', cursor:'pointer', padding:5 }}><Trash2 size={13}/></button>
+                              </div>
+                            : <button onClick={() => archiveRow(row.id)} title="Archiver" style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-blue-400"><Archive size={14}/></button>
                         }
                       </td>
                     </tr>
