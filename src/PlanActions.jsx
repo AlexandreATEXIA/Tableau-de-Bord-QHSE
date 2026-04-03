@@ -249,16 +249,17 @@ export default function PlanActions() {
     toast({ message: 'Action supprimée', type: 'info' });
   };
 
-  /* ── KPIs ───────────────────────────────────────────────────────────────── */
+  /* ── KPIs (sur les actions actives uniquement) ──────────────────────────── */
   const kpis = useMemo(() => {
-    const actives   = actions.filter(a => a.statut !== 'Annulé');
-    const terminees = actions.filter(a => a.statut === 'Terminé');
+    const nonArchivees = actions.filter(a => !a.archived_at);
+    const actives   = nonArchivees.filter(a => a.statut !== 'Annulé');
+    const terminees = nonArchivees.filter(a => a.statut === 'Terminé');
     const retard    = actives.filter(a => a.statut !== 'Terminé' && diffJours(a.echeance) < 0);
     const urgentes  = actives.filter(a => a.priorite?.includes('Urgente') && a.statut !== 'Terminé');
-    const budgetE   = actions.reduce((s, a) => s + (Number(a.cout_estime) || 0), 0);
-    const budgetR   = actions.reduce((s, a) => s + (Number(a.cout_reel)   || 0), 0);
+    const budgetE   = nonArchivees.reduce((s, a) => s + (Number(a.cout_estime) || 0), 0);
+    const budgetR   = nonArchivees.reduce((s, a) => s + (Number(a.cout_reel)   || 0), 0);
     const taux      = actives.length > 0 ? Math.round((terminees.length / actives.length) * 100) : 0;
-    return { total: actions.length, terminees: terminees.length, retard: retard.length, urgentes: urgentes.length, taux, budgetE, budgetR };
+    return { total: nonArchivees.length, terminees: terminees.length, retard: retard.length, urgentes: urgentes.length, taux, budgetE, budgetR };
   }, [actions]);
 
   /* ── Filtres ────────────────────────────────────────────────────────────── */

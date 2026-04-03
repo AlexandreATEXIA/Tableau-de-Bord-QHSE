@@ -107,15 +107,16 @@ export default function SecuriteAccidents() {
     toast({ message: 'Événement restauré', type: 'success' });
   };
 
-  // ── KPIs ─────────────────────────────────────────────────────────────────
+  // ── KPIs (actifs uniquement) ─────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const accArret    = accidents.filter(a => a.type_evenement === 'Accident avec arrêt');
-    const jours       = accidents.reduce((s, a) => s + (a.jours_perdus || 0), 0);
+    const actifs      = accidents.filter(a => !a.archived_at);
+    const accArret    = actifs.filter(a => a.type_evenement === 'Accident avec arrêt');
+    const jours       = actifs.reduce((s, a) => s + (a.jours_perdus || 0), 0);
     const heures      = EFFECTIF * HEURES_AN;
     const TF          = accArret.length > 0 ? ((accArret.length * 1000000) / heures).toFixed(2) : '0.00';
     const TG          = jours > 0 ? ((jours * 1000) / heures).toFixed(2) : '0.00';
-    const nonClotures = accidents.filter(a => a.statut_enquete !== 'Clôturée' && a.type_evenement !== "Presqu'accident");
-    return { total: accidents.length, accArret: accArret.length, jours, TF, TG, nonClotures: nonClotures.length, presquAcc: accidents.filter(a => a.type_evenement === "Presqu'accident").length };
+    const nonClotures = actifs.filter(a => a.statut_enquete !== 'Clôturée' && a.type_evenement !== "Presqu'accident");
+    return { total: actifs.length, accArret: accArret.length, jours, TF, TG, nonClotures: nonClotures.length, presquAcc: actifs.filter(a => a.type_evenement === "Presqu'accident").length };
   }, [accidents]);
 
   // ── Graphique par mois ────────────────────────────────────────────────────

@@ -249,16 +249,17 @@ export default function RegistreDUERP() {
     toast({ message: 'Risque supprimé', type: 'info' });
   };
 
-  /* ── KPIs ───────────────────────────────────────────────────────────────── */
+  /* ── KPIs (sur les risques actifs uniquement) ───────────────────────────── */
   const kpis = useMemo(() => {
+    const actifs = risques.filter(r => !r.archived_at);
     const score = r => r.criticite_resid || r.criticite || 1;
     return {
-      total:         risques.length,
-      inacceptable:  risques.filter(r => score(r) >= 13).length,
-      actionRequise: risques.filter(r => score(r) >= 9  && score(r) < 13).length,
-      surveillance:  risques.filter(r => score(r) >= 5  && score(r) < 9).length,
-      acceptables:   risques.filter(r => score(r) < 5).length,
-      sansAction:    risques.filter(r => score(r) >= 9  && !String(r.action_preventive || '').trim()).length,
+      total:         actifs.length,
+      inacceptable:  actifs.filter(r => score(r) >= 13).length,
+      actionRequise: actifs.filter(r => score(r) >= 9  && score(r) < 13).length,
+      surveillance:  actifs.filter(r => score(r) >= 5  && score(r) < 9).length,
+      acceptables:   actifs.filter(r => score(r) < 5).length,
+      sansAction:    actifs.filter(r => score(r) >= 9  && !String(r.action_preventive || '').trim()).length,
     };
   }, [risques]);
 
