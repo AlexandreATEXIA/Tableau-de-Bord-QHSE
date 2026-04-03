@@ -33,11 +33,11 @@ export default function DashboardComex({ onNavigate }) {
   const charger = async () => {
     setLoading(true);
     const [r1,r2,r3,r4,r5,r6,r7] = await Promise.all([
-      supabase.from('securite_accidents').select('*').order('date_evenement'),
-      supabase.from('plan_actions').select('*'),
-      supabase.from('habilitations').select('*'),
-      supabase.from('registre_duerp').select('*'),
-      supabase.from('qualite_nc').select('*').order('date_nc'),
+      supabase.from('securite_accidents').select('*').is('archived_at', null).order('date_evenement'),
+      supabase.from('plan_actions').select('*').is('archived_at', null),
+      supabase.from('habilitations').select('*').is('archived_at', null),
+      supabase.from('registre_duerp').select('*').is('archived_at', null),
+      supabase.from('qualite_nc').select('*').is('archived_at', null).order('date_nc'),
       supabase.from('qualite_satisfaction').select('*').order('date_enquete'),
       supabase.from('qualite_audits').select('*'),
     ]);

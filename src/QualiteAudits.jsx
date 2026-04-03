@@ -67,7 +67,7 @@ export default function QualiteAudits() {
     setLoading(true);
     const [rA,rN,rS,rQ] = await Promise.all([
       supabase.from('qualite_audits').select('*').order('id'),
-      supabase.from('qualite_nc').select('*').order('id'),
+      supabase.from('qualite_nc').select('*').is('archived_at', null).order('id'),
       supabase.from('qualite_satisfaction').select('*').order('id'),
       supabase.from('qualite_qvt').select('*').order('id'),
     ]);

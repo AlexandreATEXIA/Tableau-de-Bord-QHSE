@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { useTheme } from './ThemeContext';
+import { useConfig } from './ConfigContext';
 import {
   Target, Plus, Edit2, Trash2, Save, X, CheckCircle,
   AlertTriangle, TrendingUp, TrendingDown, ShieldAlert,
@@ -215,6 +216,7 @@ function ObjectifRow({ obj, cat, isDark, p, onEdit, onDelete, onSaveVal, getPct,
 
 export default function ObjectifsQHSE() {
   const { p, isDark } = useTheme();
+  const { config } = useConfig();
   const [objectifs, setObjectifs]   = useState([]);
   const [reelData, setReelData]     = useState({});
   const [loading, setLoading]       = useState(true);
@@ -235,14 +237,14 @@ export default function ObjectifsQHSE() {
     const real = {};
     try {
       // Accidents
-      const { data: acc } = await supabase.from('securite_accidents').select('type_evenement, jours_perdus');
+      const { data: acc } = await supabase.from('securite_accidents').select('type_evenement, jours_perdus').is('archived_at', null);
       const atArret = (acc||[]).filter(a => a.type_evenement === 'Accident avec arrêt').length;
-      const totalH = 50 * 1607;
+      const totalH = (config.effectif || 50) * (config.h_an || 1607);
       real.accidents_arret = atArret;
       real.tf = totalH > 0 ? Math.round(atArret * 1e6 / totalH * 10) / 10 : 0;
 
       // Habilitations
-      const { data: habs } = await supabase.from('habilitations').select('obtention, validiteAns');
+      const { data: habs } = await supabase.from('habilitations').select('obtention, validiteAns').is('archived_at', null);
       const now = new Date();
       const habsTotal = (habs||[]).length;
       const habsOk = (habs||[]).filter(h => {
@@ -254,7 +256,7 @@ export default function ObjectifsQHSE() {
       real.habilitations_pct = habsTotal > 0 ? Math.round(habsOk / habsTotal * 100) : 0;
 
       // NC qualité
-      const { data: ncs } = await supabase.from('qualite_nc').select('statut_nc');
+      const { data: ncs } = await supabase.from('qualite_nc').select('statut_nc').is('archived_at', null);
       const ncTotal = (ncs||[]).length;
       const ncClos = (ncs||[]).filter(n => n.statut_nc === 'Clôturée').length;
       real.nc_cloturees_pct = ncTotal > 0 ? Math.round(ncClos / ncTotal * 100) : 0;
@@ -265,7 +267,7 @@ export default function ObjectifsQHSE() {
       real.score_audit = scores.length > 0 ? Math.round(scores.reduce((s,v)=>s+v,0)/scores.length) : 0;
 
       // Plan actions
-      const { data: actions } = await supabase.from('plan_actions').select('statut');
+      const { data: actions } = await supabase.from('plan_actions').select('statut').is('archived_at', null);
       const actTotal = (actions||[]).length;
       const actClos = (actions||[]).filter(a => a.statut === 'Terminé').length;
       real.actions_terminees_pct = actTotal > 0 ? Math.round(actClos / actTotal * 100) : 0;
