@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { useConfig } from './ConfigContext';
 import { Settings, X } from 'lucide-react';
+import AgendaSemaine from './AgendaSemaine';
 
 function calcExp(obt, val) {
   const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
@@ -231,6 +232,9 @@ export default function DashboardComex({ onNavigate }) {
           </div>
         ))}
       </div>
+
+      {/* Agenda */}
+      <AgendaSemaine onNavigate={onNavigate} />
 
       {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

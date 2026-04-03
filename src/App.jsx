@@ -9,6 +9,8 @@ import {
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
 import QuickActions from './QuickActions';
+import { useAlerteCounts } from './useAlerteCounts';
+import GestionUtilisateurs from './GestionUtilisateurs';
 
 import DashboardComex        from './DashboardComex';
 import RegistreDUERP         from './RegistreDUERP';
@@ -62,8 +64,9 @@ export default function App() {
   const { theme } = useTheme();
   const [activeTab, setActiveTab]     = useState('comex');
   const [animKey, setAnimKey]         = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [session, setSession]         = useState(undefined); // undefined = loading
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
+  const [session, setSession]           = useState(undefined);
+  const [showInvite, setShowInvite]     = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -85,8 +88,19 @@ export default function App() {
     setSidebarOpen(false); // ferme la sidebar sur mobile après sélection
   };
 
+  const { counts } = useAlerteCounts();
   const activeLabel = MENU.flatMap(s => s.items).find(i => i.id === activeTab)?.label || '';
   const isDark = theme === 'dark';
+
+  // Mapping module → count d'urgences
+  const ALERT_COUNTS = {
+    accidents: counts.accidents,
+    pdca:      counts.pdca,
+    duerp:     counts.duerp,
+    qualite:   counts.qualite,
+    rh:        counts.rh,
+  };
+  const ALERT_CRITICAL = { accidents: true, duerp: true, rh: counts.rhCritical > 0 };
 
   return (
     <div style={{ display:'flex', height:'100dvh', background:'var(--bg-page)', overflow:'hidden', transition:'background 0.25s' }}>
@@ -153,7 +167,16 @@ export default function App() {
                     style={{ marginBottom:3 }}>
                     <div className="nav-icon"><Icon size={16}/></div>
                     <span style={{ flex:1, fontSize:13.5 }}>{item.label}</span>
-                    {item.badge && <span className={`nav-badge ${item.badgeClass||'blue'}`}>{item.badge}</span>}
+                    {ALERT_COUNTS[item.id] > 0 && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, minWidth: 18, height: 18, borderRadius: 100,
+                        background: ALERT_CRITICAL[item.id] ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                        color: ALERT_CRITICAL[item.id] ? '#EF4444' : '#F59E0B',
+                        border: `1px solid ${ALERT_CRITICAL[item.id] ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
+                      }}>{ALERT_COUNTS[item.id]}</span>
+                    )}
+                    {!ALERT_COUNTS[item.id] && item.badge && <span className={`nav-badge ${item.badgeClass||'blue'}`}>{item.badge}</span>}
                   </button>
                 );
               })}
@@ -173,6 +196,10 @@ export default function App() {
             <div style={{ fontSize:11, color:'var(--text-3)' }}>Responsable QHSE</div>
           </div>
           <ThemeToggleBtn/>
+          <button onClick={() => setShowInvite(true)} title="Ajouter un utilisateur"
+            style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Users size={14}/>
+          </button>
           <button onClick={() => supabase.auth.signOut()} title="Se déconnecter"
             style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <LogOut size={14}/>
@@ -238,6 +265,9 @@ export default function App() {
 
       {/* Bouton actions rapides flottant */}
       <QuickActions onNavigate={handleTab} />
+
+      {/* Modal invitation utilisateur */}
+      {showInvite && <GestionUtilisateurs onClose={() => setShowInvite(false)} />}
     </div>
   );
 }
