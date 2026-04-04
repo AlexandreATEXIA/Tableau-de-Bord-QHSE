@@ -4,7 +4,8 @@ import {
   LayoutDashboard, ShieldAlert, CheckCircle, Leaf, Users,
   FileText, HeartPulse, FileDown, Mail, BarChart2,
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
-  PieChart, ClipboardList, HardHat, Menu, X, LogOut, Archive
+  PieChart, ClipboardList, HardHat, Menu, X, LogOut, Archive,
+  Truck, ScrollText, Settings, Search, CalendarCheck
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
@@ -30,6 +31,11 @@ import ObjectifsQHSE         from './ObjectifsQHSE';
 import RevueDirection        from './RevueDirection';
 import AnalyseRisqueChantier from './AnalyseRisqueChantier';
 import ArchivesExport        from './ArchivesExport';
+import FournisseursEval      from './FournisseursEval';
+import JournalAudit          from './JournalAudit';
+import Parametres            from './Parametres';
+import RechercheGlobale      from './RechercheGlobale';
+import ReunionsQHSE          from './ReunionsQHSE';
 
 const MENU = [
   {
@@ -45,6 +51,8 @@ const MENU = [
       { id:'analyse',     label:'Analyse Risque',       icon:HardHat,       badge:'NEW', badgeClass:'red' },
       { id:'calendrier',  label:'Calendrier QHSE',      icon:Calendar,      badge:'NEW', badgeClass:'blue' },
       { id:'veille',      label:'Veille Réglementaire', icon:BookOpen,      badge:'NEW', badgeClass:'green' },
+      { id:'reunions',    label:'Réunions QHSE',        icon:CalendarCheck },
+      { id:'fournisseurs',label:'Fournisseurs',          icon:Truck },
     ]
   },
   {
@@ -57,6 +65,9 @@ const MENU = [
       { id:'import',        label:'Import Excel',       icon:FileSpreadsheet, badge:'XLS', badgeClass:'green' },
       { id:'rapport',       label:'Export PDF',         icon:FileDown,        badge:'PDF', badgeClass:'blue' },
       { id:'archives',      label:'Archives & Export',  icon:Archive,         badge:'XLS', badgeClass:'green' },
+      { id:'journal',       label:"Journal d'audit",    icon:ScrollText },
+      { id:'recherche',     label:'Recherche globale',  icon:Search },
+      { id:'parametres',    label:'Paramètres',         icon:Settings },
       { id:'notifications', label:'Alertes Email',      icon:Mail },
     ]
   }
@@ -262,6 +273,11 @@ export default function App() {
             {activeTab === 'import'        && <ImportExcel />}
             {activeTab === 'rapport'       && <RapportPDF />}
             {activeTab === 'archives'      && <ArchivesExport />}
+            {activeTab === 'fournisseurs'  && <FournisseursEval />}
+            {activeTab === 'journal'       && <JournalAudit />}
+            {activeTab === 'parametres'    && <Parametres />}
+            {activeTab === 'recherche'     && <RechercheGlobale />}
+            {activeTab === 'reunions'      && <ReunionsQHSE />}
             {activeTab === 'notifications' && <NotificationsEmail />}
           </div>
         </main>
