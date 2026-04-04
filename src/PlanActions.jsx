@@ -696,23 +696,6 @@ export default function PlanActions() {
         )}
       </div>
 
-      {/* ── Migration SQL ────────────────────────────────────────────────────── */}
-      <div className="glass-panel p-4" style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
-        <p style={{ fontSize: 11, color: p.text3, fontWeight: 600, marginBottom: 8 }}>
-          ⚙️ <span style={{ color: p.blue }}>Migration requise</span> — Exécutez dans <strong>Supabase → SQL Editor</strong> :
-        </p>
-        <pre style={{ fontSize: 10, color: p.text3, background: p.bgCard2, borderRadius: 6, padding: '8px 12px', overflowX: 'auto', border: '1px solid ' + p.border, lineHeight: 1.6 }}>{`ALTER TABLE plan_actions
-  ADD COLUMN IF NOT EXISTS type_action                  TEXT DEFAULT 'Corrective',
-  ADD COLUMN IF NOT EXISTS cause_racine                 TEXT,
-  ADD COLUMN IF NOT EXISTS reference_source             TEXT,
-  ADD COLUMN IF NOT EXISTS date_cible_revisee           DATE,
-  ADD COLUMN IF NOT EXISTS nombre_reports               INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS cout_estime                  NUMERIC(12,2),
-  ADD COLUMN IF NOT EXISTS cout_reel                    NUMERIC(12,2),
-  ADD COLUMN IF NOT EXISTS avancement_pct               INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS date_verification_efficacite DATE,
-  ADD COLUMN IF NOT EXISTS resultat_efficacite          TEXT DEFAULT 'Non évalué';`}</pre>
-      </div>
 
     </div>
   );
