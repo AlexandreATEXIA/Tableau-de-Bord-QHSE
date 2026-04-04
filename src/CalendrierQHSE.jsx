@@ -153,9 +153,9 @@ export default function CalendrierQHSE() {
         });
 
         // Risques DUERP avec échéance
-        const { data: risques } = await supabase.from('registre_duerp').select('domaine,pilote,echeance').not('echeance','is',null);
+        const { data: risques } = await supabase.from('registre_duerp').select('famille_risque,pilote,echeance').not('echeance','is',null);
         (risques||[]).forEach(r => {
-          all.push({ type:'risque', titre:`Échéance risque — ${r.domaine||'Domaine'}`, sous:`Pilote: ${r.pilote||'—'}`, date:toYMD(r.echeance) });
+          all.push({ type:'risque', titre:`Échéance risque — ${r.famille_risque||'Domaine'}`, sous:`Pilote: ${r.pilote||'—'}`, date:toYMD(r.echeance) });
         });
 
       } catch(e) { console.warn('Erreur chargement calendrier:', e); }
