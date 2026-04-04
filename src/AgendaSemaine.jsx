@@ -45,12 +45,12 @@ export default function AgendaSemaine({ onNavigate }) {
       supabase.from('plan_actions').select('id,action,echeance,pilote,statut,domaine')
         .lte('echeance', horizonStr).not('statut', 'in', '("Terminé","Annulé")').is('archived_at', null).order('echeance'),
       // Audits planifiés dans 30j
-      supabase.from('qualite_audits').select('id,type_audit,date_audit,auditeur,statut')
-        .lte('date_audit', horizonStr).gte('date_audit', now).order('date_audit'),
+      supabase.from('qualite_audits').select('id,type_audit,date,auditeur,statut')
+        .lte('date', horizonStr).gte('date', now).order('date'),
       // Habilitations (actives seulement)
-      supabase.from('habilitations').select('id,employe_id,type_habilitation,obtention,validiteAns').is('archived_at', null),
-      // Analyses risque à revoir (date_analyse dans le passé)
-      supabase.from('analyses_risque').select('id,titre_chantier,date_analyse,statut').order('date_analyse', { ascending: false }).limit(20),
+      supabase.from('habilitations').select('id,employe,domaine,obtention,validiteAns').is('archived_at', null),
+      // Analyses risque à revoir
+      supabase.from('analyses_risque').select('id,chantier,date,statut').order('date', { ascending: false }).limit(20),
     ]);
 
     const all = [];
@@ -66,8 +66,8 @@ export default function AgendaSemaine({ onNavigate }) {
     // Audits
     (r2.data || []).forEach(a => {
       all.push({
-        date: a.date_audit, label: a.type_audit || 'Audit planifié', sub: a.auditeur || '',
-        icon: ClipboardList, color: '#8B5CF6', tab: 'qualite', urgence: URGENCE(a.date_audit),
+        date: a.date, label: a.type_audit || 'Audit planifié', sub: a.auditeur || '',
+        icon: ClipboardList, color: '#8B5CF6', tab: 'qualite', urgence: URGENCE(a.date),
       });
     });
 
@@ -79,7 +79,7 @@ export default function AgendaSemaine({ onNavigate }) {
       const diff = (new Date(exp) - now2) / 86400000;
       if (diff <= 30) {
         all.push({
-          date: exp, label: h.type_habilitation || 'Habilitation', sub: `Expiration le ${new Date(exp).toLocaleDateString('fr-FR')}`,
+          date: exp, label: h.domaine || 'Habilitation', sub: `Expiration le ${new Date(exp).toLocaleDateString('fr-FR')}`,
           icon: GraduationCap, color: '#F59E0B', tab: 'rh', urgence: URGENCE(exp),
         });
       }
