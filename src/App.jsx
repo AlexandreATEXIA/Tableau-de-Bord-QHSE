@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShieldAlert, CheckCircle, Leaf, Users,
   FileText, HeartPulse, FileDown, Mail, BarChart2,
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
-  PieChart, ClipboardList, HardHat, Menu, X, LogOut
+  PieChart, ClipboardList, HardHat, Menu, X, LogOut, Archive
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
@@ -29,6 +29,7 @@ import CalendrierQHSE        from './CalendrierQHSE';
 import ObjectifsQHSE         from './ObjectifsQHSE';
 import RevueDirection        from './RevueDirection';
 import AnalyseRisqueChantier from './AnalyseRisqueChantier';
+import ArchivesExport        from './ArchivesExport';
 
 const MENU = [
   {
@@ -55,6 +56,7 @@ const MENU = [
       { id:'kpis',          label:'KPIs & Indicateurs', icon:BarChart2 },
       { id:'import',        label:'Import Excel',       icon:FileSpreadsheet, badge:'XLS', badgeClass:'green' },
       { id:'rapport',       label:'Export PDF',         icon:FileDown,        badge:'PDF', badgeClass:'blue' },
+      { id:'archives',      label:'Archives & Export',  icon:Archive,         badge:'XLS', badgeClass:'green' },
       { id:'notifications', label:'Alertes Email',      icon:Mail },
     ]
   }
@@ -259,6 +261,7 @@ export default function App() {
             {activeTab === 'kpis'          && <KPIsSecurite />}
             {activeTab === 'import'        && <ImportExcel />}
             {activeTab === 'rapport'       && <RapportPDF />}
+            {activeTab === 'archives'      && <ArchivesExport />}
             {activeTab === 'notifications' && <NotificationsEmail />}
           </div>
         </main>
