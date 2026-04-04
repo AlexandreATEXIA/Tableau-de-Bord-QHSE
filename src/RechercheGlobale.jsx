@@ -13,6 +13,7 @@ const MODULES = {
 };
 
 export default function RechercheGlobale({ open, onClose, onNavigate }) {
+  const isTab = open === undefined;
   const { p } = useTheme();
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);
@@ -22,7 +23,7 @@ export default function RechercheGlobale({ open, onClose, onNavigate }) {
   const listRef  = useRef(null);
 
   useEffect(() => {
-    if (open) { setQuery(''); setResults([]); setSelected(0); setTimeout(() => inputRef.current?.focus(), 60); }
+    if (open || isTab) { setQuery(''); setResults([]); setSelected(0); setTimeout(() => inputRef.current?.focus(), 60); }
   }, [open]);
 
   useEffect(() => {
@@ -55,10 +56,10 @@ export default function RechercheGlobale({ open, onClose, onNavigate }) {
     setSearch(false);
   };
 
-  const go = (r) => { onNavigate(MODULES[r._t].tab); onClose(); };
+  const go = (r) => { if (onNavigate) onNavigate(MODULES[r._t].tab); if (onClose) onClose(); };
 
   const onKey = (e) => {
-    if (e.key === 'Escape') { onClose(); return; }
+    if (e.key === 'Escape') { if (onClose) onClose(); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelected(s => Math.min(s + 1, results.length - 1)); }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setSelected(s => Math.max(s - 1, 0)); }
     if (e.key === 'Enter' && results[selected]) go(results[selected]);
@@ -69,90 +70,115 @@ export default function RechercheGlobale({ open, onClose, onNavigate }) {
     el?.scrollIntoView({ block: 'nearest' });
   }, [selected]);
 
-  if (!open) return null;
+  if (!open && !isTab) return null;
 
+  const searchContent = (
+    <>
+      {/* Barre de recherche */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 18px', borderBottom:'1px solid '+p.border }}>
+        <Search size={18} style={{ color:p.blue, flexShrink:0 }}/>
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={onKey}
+          placeholder="Rechercher une action, un accident, une NC, un risque, une habilitation..."
+          style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:14, color:p.text1, fontFamily:'inherit', caretColor:p.blue }}
+        />
+        {searching
+          ? <RefreshCw size={14} className="animate-spin" style={{ color:p.text4 }}/>
+          : query && <button onClick={() => setQuery('')} style={{ background:'none', border:'none', cursor:'pointer', color:p.text4, display:'flex', padding:2 }}><X size={14}/></button>
+        }
+        {!isTab && <kbd style={{ fontSize:10, color:p.text4, background:p.whiteFaint, border:'1px solid '+p.border, borderRadius:5, padding:'2px 7px', flexShrink:0, fontFamily:'monospace' }}>Esc</kbd>}
+      </div>
+
+      {/* Résultats */}
+      <div ref={listRef} style={{ maxHeight: isTab ? 600 : 420, overflowY:'auto' }}>
+        {query.length < 2 && (
+          <div style={{ padding:'16px 18px' }}>
+            <p style={{ fontSize:11, color:p.text4, marginBottom:10 }}>Modules indexés :</p>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+              {Object.entries(MODULES).map(([k, m]) => (
+                <span key={k} style={{ fontSize:11, background:p.whiteFaint, border:'1px solid '+p.border, borderRadius:7, padding:'4px 10px', color:p.text3 }}>
+                  {m.icon} {m.label}
+                </span>
+              ))}
+            </div>
+            <p style={{ fontSize:10, color:p.text4, marginTop:12, opacity:0.7 }}>Tapez au moins 2 caractères pour rechercher</p>
+          </div>
+        )}
+
+        {query.length >= 2 && !searching && results.length === 0 && (
+          <div style={{ padding:'32px 18px', textAlign:'center', color:p.text4, fontSize:13 }}>
+            Aucun résultat pour « {query} »
+          </div>
+        )}
+
+        {results.map((r, i) => {
+          const m = MODULES[r._t];
+          return (
+            <div
+              key={`${r._t}-${r._id}`}
+              onClick={() => go(r)}
+              style={{
+                padding:'11px 18px', display:'flex', gap:11, alignItems:'center', cursor:'pointer',
+                background: i === selected ? (p.whiteFaint2) : 'transparent',
+                borderBottom: '1px solid '+p.border, transition:'background 0.08s',
+              }}
+              onMouseEnter={() => setSelected(i)}
+            >
+              <span style={{ fontSize:17, flexShrink:0 }}>{m.icon}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:p.text1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r._label}</div>
+                <div style={{ fontSize:11, color:p.text4, marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r._sub}</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+                <span style={{ fontSize:10, color:m.color, background:m.color+'18', border:`1px solid ${m.color}30`, borderRadius:6, padding:'2px 8px', fontWeight:700 }}>
+                  {m.label}
+                </span>
+                <ChevronRight size={12} style={{ color:p.text4 }}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {results.length > 0 && (
+        <div style={{ padding:'7px 18px', borderTop:'1px solid '+p.border, fontSize:10, color:p.text4, display:'flex', justifyContent:'space-between' }}>
+          <span>{results.length} résultat{results.length>1?'s':''}</span>
+          <span>Cliquez pour ouvrir</span>
+        </div>
+      )}
+    </>
+  );
+
+  // Mode onglet
+  if (isTab) {
+    return (
+      <div className="space-y-5 pb-10">
+        <header className="page-header">
+          <div>
+            <h2 className="page-title flex items-center gap-3"><Search size={26} className="text-blue-400"/> Recherche globale</h2>
+            <p className="page-subtitle">Recherche dans tous les modules QHSE</p>
+          </div>
+        </header>
+        <div style={{ width:'100%', maxWidth:700, margin:'0 auto' }}>
+          <div style={{ background:p.bgCard2, border:'1px solid '+p.border2, borderRadius:16, overflow:'hidden' }}>
+            {searchContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mode modal
   return (
     <div
       style={{ position:'fixed', inset:0, zIndex:100000, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(6px)', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'72px 20px 20px' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{ width:'100%', maxWidth:620, background:p.bgCard2, border:'1px solid '+p.border2, borderRadius:16, overflow:'hidden', boxShadow:'0 32px 80px rgba(0,0,0,0.45)', animation:'fadeInScale 0.18s ease' }}>
-
-        {/* Barre de recherche */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 18px', borderBottom:'1px solid '+p.border }}>
-          <Search size={18} style={{ color:p.blue, flexShrink:0 }}/>
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={onKey}
-            placeholder="Rechercher une action, un accident, une NC, un risque, une habilitation…"
-            style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:14, color:p.text1, fontFamily:'inherit', caretColor:p.blue }}
-          />
-          {searching
-            ? <RefreshCw size={14} className="animate-spin" style={{ color:p.text4 }}/>
-            : query && <button onClick={() => setQuery('')} style={{ background:'none', border:'none', cursor:'pointer', color:p.text4, display:'flex', padding:2 }}><X size={14}/></button>
-          }
-          <kbd style={{ fontSize:10, color:p.text4, background:p.whiteFaint, border:'1px solid '+p.border, borderRadius:5, padding:'2px 7px', flexShrink:0, fontFamily:'monospace' }}>Esc</kbd>
-        </div>
-
-        {/* Résultats */}
-        <div ref={listRef} style={{ maxHeight:420, overflowY:'auto' }}>
-          {query.length < 2 && (
-            <div style={{ padding:'16px 18px' }}>
-              <p style={{ fontSize:11, color:p.text4, marginBottom:10 }}>Modules indexés :</p>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
-                {Object.entries(MODULES).map(([k, m]) => (
-                  <span key={k} style={{ fontSize:11, background:p.whiteFaint, border:'1px solid '+p.border, borderRadius:7, padding:'4px 10px', color:p.text3 }}>
-                    {m.icon} {m.label}
-                  </span>
-                ))}
-              </div>
-              <p style={{ fontSize:10, color:p.text4, marginTop:12, opacity:0.7 }}>Tapez au moins 2 caractères · ↑↓ pour naviguer · Entrée pour ouvrir</p>
-            </div>
-          )}
-
-          {query.length >= 2 && !searching && results.length === 0 && (
-            <div style={{ padding:'32px 18px', textAlign:'center', color:p.text4, fontSize:13 }}>
-              Aucun résultat pour « {query} »
-            </div>
-          )}
-
-          {results.map((r, i) => {
-            const m = MODULES[r._t];
-            return (
-              <div
-                key={`${r._t}-${r._id}`}
-                onClick={() => go(r)}
-                style={{
-                  padding:'11px 18px', display:'flex', gap:11, alignItems:'center', cursor:'pointer',
-                  background: i === selected ? (p.whiteFaint2) : 'transparent',
-                  borderBottom: '1px solid '+p.border, transition:'background 0.08s',
-                }}
-                onMouseEnter={() => setSelected(i)}
-              >
-                <span style={{ fontSize:17, flexShrink:0 }}>{m.icon}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:p.text1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r._label}</div>
-                  <div style={{ fontSize:11, color:p.text4, marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r._sub}</div>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                  <span style={{ fontSize:10, color:m.color, background:m.color+'18', border:`1px solid ${m.color}30`, borderRadius:6, padding:'2px 8px', fontWeight:700 }}>
-                    {m.label}
-                  </span>
-                  <ChevronRight size={12} style={{ color:p.text4 }}/>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {results.length > 0 && (
-          <div style={{ padding:'7px 18px', borderTop:'1px solid '+p.border, fontSize:10, color:p.text4, display:'flex', justifyContent:'space-between' }}>
-            <span>{results.length} résultat{results.length>1?'s':''}</span>
-            <span>↑↓ Naviguer · Entrée Ouvrir</span>
-          </div>
-        )}
+        {searchContent}
       </div>
     </div>
   );
