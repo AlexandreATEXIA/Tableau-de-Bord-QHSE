@@ -103,7 +103,7 @@ export default function Environnement() {
       return s + (info ? Number(r.quantite || 0) * (info[1].co2 || 0) : 0);
     }, 0);
 
-    return { totalElec, totalEau, totalDech, co2: co2.toFixed(1) };
+    return { totalElec, totalEau, totalDech, co2: (co2 / 1000).toFixed(2) };
   }, [releves]);
 
   // ── Graphique mensuel ─────────────────────────────────────────────────────
