@@ -1,14 +1,32 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import { UserPlus, X, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { useUser, ROLES } from './UserContext';
 
 export default function GestionUtilisateurs({ onClose }) {
+  const { role: roleAppelant } = useUser();
   const [email, setEmail]     = useState('');
   const [nom, setNom]         = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole]       = useState('operateur'); // moindre privilège par défaut
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null); // { success, message }
+
+  // Défense en profondeur : si un non-admin arrive jusqu'ici (ex : bypass UI),
+  // on bloque immédiatement. La vraie protection reste côté Edge Function.
+  if (roleAppelant !== 'admin') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+           onClick={onClose}>
+        <div style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, maxWidth: 360, textAlign: 'center' }}
+             onClick={e => e.stopPropagation()}>
+          <p style={{ color: 'var(--text-1)', fontWeight: 700, marginBottom: 8 }}>Accès refusé</p>
+          <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Seul un administrateur peut créer un compte utilisateur.</p>
+        </div>
+      </div>
+    );
+  }
 
   const inviter = async (e) => {
     e.preventDefault();
@@ -16,17 +34,17 @@ export default function GestionUtilisateurs({ onClose }) {
     setResult(null);
     try {
       const { data, error } = await supabase.functions.invoke('invite-user', {
-        body: { email, password, nom },
+        body: { email, password, nom, role },
       });
       if (error) throw error;
       if (data?.success) {
-        setResult({ success: true, message: `Compte créé pour ${email}` });
-        setEmail(''); setNom(''); setPassword('');
+        setResult({ success: true, message: `Compte créé pour ${email} (rôle : ${ROLES[role]?.label || role})` });
+        setEmail(''); setNom(''); setPassword(''); setRole('operateur');
       } else {
         setResult({ success: false, message: data?.message || 'Erreur inconnue' });
       }
     } catch (err) {
-      setResult({ success: false, message: String(err) });
+      setResult({ success: false, message: String(err?.message || err) });
     }
     setLoading(false);
   };
@@ -82,6 +100,18 @@ export default function GestionUtilisateurs({ onClose }) {
                 {showPwd ? <EyeOff size={15}/> : <Eye size={15}/>}
               </button>
             </div>
+          </div>
+          <div>
+            <label style={lbl}>Rôle *</label>
+            <select value={role} onChange={e => setRole(e.target.value)} required style={inp}>
+              <option value="operateur">Opérateur (accès limité : Supervision, Accidents, Plan d'actions, Calendrier)</option>
+              <option value="direction">Direction (pilotage : Supervision, Revue, Stats, Objectifs, KPI, Calendrier, Rapport)</option>
+              <option value="responsable_qhse">Responsable QHSE (accès complet)</option>
+              <option value="admin">Administrateur (accès complet + gestion utilisateurs)</option>
+            </select>
+            <p style={{ fontSize: 10.5, color: 'var(--text-4)', marginTop: 5, lineHeight: 1.4 }}>
+              Le rôle peut être modifié plus tard dans Supabase Dashboard → Authentication → Users → User Metadata.
+            </p>
           </div>
           {result && !result.success && (
             <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 12, color: '#FCA5A5' }}>{result.message}</div>

@@ -9,23 +9,26 @@ import { ToastProvider } from './Toast.jsx'
 import { ParametresProvider } from './ParametresContext.jsx'
 import { AnneeProvider } from './AnneeContext.jsx'
 import { AlertesProvider } from './AlertesContext.jsx'
+import { UserProvider } from './UserContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
-      <ConfigProvider>
-        <EmployesProvider>
-          <ToastProvider>
-            <ParametresProvider>
-              <AnneeProvider>
-                <AlertesProvider>
-                  <App />
-                </AlertesProvider>
-              </AnneeProvider>
-            </ParametresProvider>
-          </ToastProvider>
-        </EmployesProvider>
-      </ConfigProvider>
+      <UserProvider>
+        <ConfigProvider>
+          <EmployesProvider>
+            <ToastProvider>
+              <ParametresProvider>
+                <AnneeProvider>
+                  <AlertesProvider>
+                    <App />
+                  </AlertesProvider>
+                </AnneeProvider>
+              </ParametresProvider>
+            </ToastProvider>
+          </EmployesProvider>
+        </ConfigProvider>
+      </UserProvider>
     </ThemeProvider>
   </StrictMode>,
 )

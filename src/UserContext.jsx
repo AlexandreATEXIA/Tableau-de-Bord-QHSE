@@ -25,7 +25,11 @@ export function UserProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const role        = user?.user_metadata?.role || 'responsable_qhse';
+  // Principe du moindre privilège : sans rôle explicite dans user_metadata,
+  // on retombe sur "operateur" (accès le plus restreint), jamais sur un rôle
+  // élevé. Les comptes existants doivent être taggés dans Supabase Dashboard
+  // → Authentication → Users → User Metadata → role.
+  const role        = user?.user_metadata?.role || 'operateur';
   const displayName = user?.user_metadata?.prenom || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Utilisateur';
   const initiale    = displayName.charAt(0).toUpperCase();
 

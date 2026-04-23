@@ -1,11 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://cwreletuirtrnviqlila.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3cmVsZXR1aXJ0cm52aXFsaWxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzODU4ODMsImV4cCI6MjA4ODk2MTg4M30.JX5TnGveHtu8Tkyo33LIIzM9BgKlHr9i5-86UZB8Sfo';
+// Les secrets sont lus depuis les variables d'environnement Vite (.env local,
+// Environment Variables sur Vercel pour les environnements Preview/Production).
+// Ne jamais committer les valeurs réelles : voir .env.example pour le template.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// --- ON AJOUTE CECI POUR LE DEBUG ---
-console.log("URL lue par l'app :", supabaseUrl);
-console.log("Clé lue par l'app :", supabaseKey.substring(0, 20) + "..."); 
-// ------------------------------------
+// Fail-fast : si la configuration est incomplète, on refuse de démarrer l'app
+// plutôt que de laisser un écran blanc ou des erreurs silencieuses.
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    'Configuration Supabase manquante. ' +
+    'Vérifie que VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont définies ' +
+    'dans .env (local) ou dans les Environment Variables Vercel (production).'
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

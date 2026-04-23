@@ -12,6 +12,7 @@ import LoginPage from './LoginPage';
 import QuickActions from './QuickActions';
 import { useAlerteCounts } from './useAlerteCounts';
 import GestionUtilisateurs from './GestionUtilisateurs';
+import { useUser } from './UserContext';
 
 import DashboardComex        from './DashboardComex';
 import RegistreDUERP         from './RegistreDUERP';
@@ -73,6 +74,7 @@ const MENU = [
 
 export default function App() {
   const { theme } = useTheme();
+  const { role, canAccess } = useUser();
   const [activeTab, setActiveTab]     = useState('comex');
   const [animKey, setAnimKey]         = useState(0);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
@@ -84,6 +86,15 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
   }, []);
+
+  // Si le rôle courant n'a pas accès à l'onglet actif (ex : changement de rôle,
+  // rechargement sur une URL interne), on retombe sur la Supervision.
+  useEffect(() => {
+    if (!canAccess(activeTab)) {
+      setActiveTab('comex');
+      setAnimKey(k => k + 1);
+    }
+  }, [activeTab, role]); // role change = re-check
 
   // ⚠️ Les hooks DOIVENT être appelés avant tout early return
   const { counts } = useAlerteCounts();
@@ -103,6 +114,14 @@ export default function App() {
   };
   const activeLabel = MENU.flatMap(s => s.items).find(i => i.id === activeTab)?.label || '';
   const isDark = theme === 'dark';
+
+  // RBAC — on filtre le MENU selon le rôle. Les sections vides sont masquées.
+  // Les rôles "admin" et "responsable_qhse" (menuAccess: null) voient tout.
+  const menuVisible = MENU
+    .map(section => ({ ...section, items: section.items.filter(item => canAccess(item.id)) }))
+    .filter(section => section.items.length > 0);
+
+  const estAdmin = role === 'admin';
 
   // Mapping module → count d'urgences
   const ALERT_COUNTS = {
@@ -167,7 +186,7 @@ export default function App() {
 
         {/* Nav */}
         <nav style={{ flex:1, padding:'10px', overflowY:'auto' }}>
-          {MENU.map(section => (
+          {menuVisible.map(section => (
             <div key={section.section}>
               <div className="nav-section">{section.section}</div>
               {section.items.map(item => {
@@ -208,10 +227,12 @@ export default function App() {
             <div style={{ fontSize:11, color:'var(--text-3)' }}>Responsable QHSE</div>
           </div>
           <ThemeToggleBtn/>
-          <button onClick={() => setShowInvite(true)} title="Ajouter un utilisateur"
-            style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Users size={14}/>
-          </button>
+          {estAdmin && (
+            <button onClick={() => setShowInvite(true)} title="Ajouter un utilisateur"
+              style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <Users size={14}/>
+            </button>
+          )}
           <button onClick={() => supabase.auth.signOut()} title="Se déconnecter"
             style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <LogOut size={14}/>
@@ -283,8 +304,8 @@ export default function App() {
       {/* Bouton actions rapides flottant */}
       <QuickActions onNavigate={handleTab} />
 
-      {/* Modal invitation utilisateur */}
-      {showInvite && <GestionUtilisateurs onClose={() => setShowInvite(false)} />}
+      {/* Modal invitation utilisateur (admin uniquement) */}
+      {showInvite && estAdmin && <GestionUtilisateurs onClose={() => setShowInvite(false)} />}
     </div>
   );
 }
