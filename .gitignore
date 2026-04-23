@@ -28,3 +28,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code (IDE local / agents worktrees) — ne pas versionner
+.claude/
+
+# Supabase CLI — artefacts locaux
+supabase/.temp/
+supabase/.branches/
