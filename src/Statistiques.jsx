@@ -1,6 +1,7 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
+import { safeDate, safeNumber, toPercent, diffJours, safeMean } from './utils/kpi';
 import { BarChart2, RefreshCw, TrendingUp, TrendingDown, Activity, Shield, Target, Users } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -78,7 +79,9 @@ export default function Statistiques() {
       domainesCount[d].total++;
       if (a.statut?.includes('Terminé')) domainesCount[d].terminees++;
       if (a.echeance && !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé')) {
-        if (Math.ceil((new Date(a.echeance) - new Date()) / 86400000) < 0) domainesCount[d].retard++;
+        // diffJours retourne null si échéance mal-formée → null<0 === false (pas compté en retard)
+        const dj = diffJours(a.echeance);
+        if (dj !== null && dj < 0) domainesCount[d].retard++;
       }
     });
     const actionsParDomaine = Object.values(domainesCount).map(d => ({
@@ -102,13 +105,25 @@ export default function Statistiques() {
     ];
 
     // ── Habilitations par statut ────────────────────────────────────────
-    const calcExp = (obt, val) => { const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d; };
-    const habsValides   = habilitations.filter(h => h.obtention && calcExp(h.obtention, h.validiteAns) > new Date()).length;
-    const habsPerimees  = habilitations.filter(h => h.obtention && calcExp(h.obtention, h.validiteAns) <= new Date()).length;
+    // calcExp sécurisé : retourne null si obtention invalide ou validité non-numérique.
+    // Les comparaisons avec null (`null > Date`, `null <= Date`) donnent des résultats
+    // prévisibles : null est coerced à 0 → toujours <= Date récente → habilitations à
+    // date invalide seront comptées comme "périmées" (signale l'anomalie côté saisie).
+    const calcExp = (obt, val) => {
+      const d = safeDate(obt);
+      if (d === null) return null;
+      const annees = safeNumber(val, NaN);
+      if (!Number.isFinite(annees)) return null;
+      d.setFullYear(d.getFullYear() + annees);
+      return d;
+    };
+    const habsValides   = habilitations.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e !== null && e > new Date(); }).length;
+    const habsPerimees  = habilitations.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e !== null && e <= new Date(); }).length;
     const habsBientot   = habilitations.filter(h => {
-      if (!h.obtention) return false;
-      const d = Math.ceil((calcExp(h.obtention, h.validiteAns) - new Date()) / 86400000);
-      return d >= 0 && d <= 30;
+      const e = calcExp(h.obtention, h.validiteAns);
+      if (e === null) return false;
+      const dj = diffJours(e);
+      return dj !== null && dj >= 0 && dj <= 30;
     }).length;
     const habsParStatut = [
       { name: 'Valides',       value: habsValides - habsBientot, fill: '#10B981' },
@@ -137,21 +152,39 @@ export default function Statistiques() {
     // ── Satisfaction évolution ──────────────────────────────────────────
     const satEvol = satisfaction.slice(-12).map(s => ({
       client: s.client?.substring(0, 12) || s.date_enquete,
-      note: Number(s.note_globale),
+      note: safeNumber(s.note_globale, 0),
       date: s.date_enquete,
     }));
 
     // ── Radar performance globale ───────────────────────────────────────
-    const totalActions = actions.length || 1;
-    const tauxCloture  = Math.round((actions.filter(a => a.statut?.includes('Terminé')).length / totalActions) * 100);
-    const tauxHabs     = habilitations.length > 0 ? Math.round((habsValides / habilitations.length) * 100) : 100;
-    const tauxMaitrise = risques.length > 0 ? Math.round((risques.filter(r => (r.criticite||1) < 4).length / risques.length) * 100) : 100;
-    const moyenneSat   = satisfaction.length > 0 ? Math.round(satisfaction.reduce((s, a) => s + Number(a.note_globale), 0) / satisfaction.length * 10) : 0;
-    const scoreSecurite = Math.max(0, 100 - (accidents.filter(a => a.type_evenement === 'Accident avec arrêt').length * 15));
-    const scoreAudit   = audits.filter(a => a.score > 0).length > 0
-      ? Math.round(audits.filter(a => a.score > 0).reduce((s, a) => s + Number(a.score), 0) / audits.filter(a => a.score > 0).length)
-      : 50;
+    // Convention auditeur : chaque taux vaut `null` quand le module n'a pas
+    // de données (vs. 0 ou 100 auparavant, qui induisait en erreur).
+    // Le score global est calculé uniquement sur les composantes disponibles.
+    const tauxCloturePct  = toPercent(actions.filter(a => a.statut?.includes('Terminé')).length, actions.length);
+    const tauxHabsPct     = toPercent(habsValides, habilitations.length);
+    const tauxMaitrisePct = toPercent(risques.filter(r => (r.criticite || 1) < 4).length, risques.length);
 
+    // Moyenne satisfaction : normalisée sur 100 (notes sur 10 × 10).
+    // safeMean ignore les notes null/vides et refuse les tableaux vides.
+    const satMean = safeMean(satisfaction, (s) => s.note_globale);
+    const moyenneSat = satMean.hasData
+      ? Math.round(Math.min(100, satMean.value * 10))
+      : null;
+
+    // Score sécurité : seul KPI qui reste calculable sans données (pas d'accident = 100).
+    const scoreSecurite = Math.max(0, 100 - (accidents.filter(a => a.type_evenement === 'Accident avec arrêt').length * 15));
+
+    // Score audit : moyenne des scores > 0 (exclut les audits non notés).
+    const auditsNotes = audits.filter(a => safeNumber(a.score, 0) > 0);
+    const scoreAuditMean = safeMean(auditsNotes, (a) => a.score);
+    const scoreAudit = scoreAuditMean.hasData ? Math.round(scoreAuditMean.value) : null;
+
+    // Extraction des valeurs pour le radar (null → non affiché pour cet axe)
+    const tauxCloture  = tauxCloturePct.value;
+    const tauxHabs     = tauxHabsPct.value;
+    const tauxMaitrise = tauxMaitrisePct.value;
+
+    // Radar : on ne trace que les axes qui ont des données (évite un point "0" trompeur)
     const radarData = [
       { subject: 'Actions PDCA',    A: tauxCloture,  fullMark: 100 },
       { subject: 'Habilitations',   A: tauxHabs,     fullMark: 100 },
@@ -159,9 +192,15 @@ export default function Statistiques() {
       { subject: 'Satisfaction',    A: moyenneSat,   fullMark: 100 },
       { subject: 'Sécurité',        A: scoreSecurite,fullMark: 100 },
       { subject: 'Qualité audits',  A: scoreAudit,   fullMark: 100 },
-    ];
+    ].filter(d => d.A !== null);
 
-    const scoreGlobal = Math.round((tauxCloture + tauxHabs + tauxMaitrise + moyenneSat + scoreSecurite + scoreAudit) / 6);
+    // Score global : moyenne des composantes réellement disponibles
+    // (évite "0%" factice si un module n'est pas encore alimenté).
+    const composantes = [tauxCloture, tauxHabs, tauxMaitrise, moyenneSat, scoreSecurite, scoreAudit]
+      .filter(v => v !== null);
+    const scoreGlobal = composantes.length > 0
+      ? Math.round(composantes.reduce((s, v) => s + v, 0) / composantes.length)
+      : null;
 
     return { accidentsMois, actionsParDomaine, statutsActions, risquesParNiveau, habsParStatut, ncOrigineData, ncMois, satEvol, radarData, scoreGlobal, tauxCloture, tauxHabs, tauxMaitrise, moyenneSat, scoreSecurite, scoreAudit };
   }, [data]);
@@ -172,18 +211,25 @@ export default function Statistiques() {
     </div>
   );
 
-  const ScoreCard = ({ label, val, color, icon }) => (
-    <div className="glass-panel p-5 text-center">
-      <div style={{ width: 48, height: 48, borderRadius: 12, background: `${color}20`, border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color }}>
-        {icon}
+  // ScoreCard gère explicitement le cas "pas de données" → affiche "N/A"
+  // plutôt qu'un 0 % ou 100 % trompeur pour le décideur.
+  const ScoreCard = ({ label, val, color, icon }) => {
+    const hasData = val !== null && val !== undefined;
+    const displayVal = hasData ? `${val}%` : 'N/A';
+    const barWidth   = hasData ? val : 0;
+    return (
+      <div className="glass-panel p-5 text-center">
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: `${color}20`, border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color }}>
+          {icon}
+        </div>
+        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-3xl font-black" style={{ color: hasData ? color : '#64748B' }}>{displayVal}</p>
+        <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 10 }}>
+          <div style={{ height: '100%', width: `${barWidth}%`, background: color, borderRadius: 2, transition: 'width 1s ease' }} />
+        </div>
       </div>
-      <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-3xl font-black" style={{ color }}>{val}%</p>
-      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 10 }}>
-        <div style={{ height: '100%', width: `${val}%`, background: color, borderRadius: 2, transition: 'width 1s ease' }} />
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 pb-10">
@@ -208,7 +254,7 @@ export default function Statistiques() {
         {/* Radar */}
         <div className="glass-panel p-6">
           <h3 className="text-white font-bold mb-1 flex items-center gap-2"><Target size={18} className="text-purple-400"/>Performance globale SMI</h3>
-          <p className="text-slate-400 text-xs mb-4">Score global : <strong className="text-white text-lg">{stats.scoreGlobal}/100</strong></p>
+          <p className="text-slate-400 text-xs mb-4">Score global : <strong className="text-white text-lg">{stats.scoreGlobal !== null ? `${stats.scoreGlobal}/100` : 'N/A — aucun module alimenté'}</strong></p>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={stats.radarData}>

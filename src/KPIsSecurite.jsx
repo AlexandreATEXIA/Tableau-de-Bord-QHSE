@@ -10,7 +10,7 @@ import {
   CartesianGrid, BarChart, Bar, ReferenceLine, LineChart, Line, Cell
 } from 'recharts';
 import { useConfig } from './ConfigContext';
-import { safeDate, diffJours } from './utils/kpi';
+import { safeDate, diffJours, safeNumber } from './utils/kpi';
 
 const OBJ_DEFAULTS = { TF:10, TG:1, tauxCloture:70, tauxHabs:90, tauxMaitrise:70, accArret:0, actionsRetard:0, satisfaction:7 };
 
@@ -102,7 +102,8 @@ export default function KPIsSecurite() {
       const dj = diffJours(a.echeance, now);
       return dj !== null && dj < 0;
     });
-    const tauxCloture  = actions.length>0 ? Math.round((actTerminees.length/actions.length)*100) : 0;
+    // tauxCloture : null si aucune action (convention auditeur : "pas de données" ≠ "0%")
+    const tauxCloture  = actions.length>0 ? Math.round((actTerminees.length/actions.length)*100) : null;
     const parDomaine   = ['Qualité','Sécurité','Environnement','Énergie','RSE / Transverse'].map(d => {
       const total = actions.filter(a=>a.domaine===d).length;
       const done  = actions.filter(a=>a.domaine===d&&a.statut?.includes('Terminé')).length;
@@ -111,23 +112,34 @@ export default function KPIsSecurite() {
 
     // Habilitations
     const habValides   = habs.filter(h => h.obtention && calcExp(h.obtention,h.validiteAns)>now);
-    const tauxHabs     = habs.length>0 ? Math.round((habValides.length/habs.length)*100) : 100;
+    // tauxHabs : null si aucune habilitation (avant: 100% faussement optimiste — bug cohérence
+    // inter-modules, Statistiques affichait 0% et KPIsSecurite 100% pour le même état "vide").
+    const tauxHabs     = habs.length>0 ? Math.round((habValides.length/habs.length)*100) : null;
 
     // DUERP
     const risqCrit = risques.filter(r=>(r.criticite||1)>=9);
     const risqMod  = risques.filter(r=>(r.criticite||1)>=4&&(r.criticite||1)<9);
     const risqAcc  = risques.filter(r=>(r.criticite||1)<4);
-    const tauxMaitrise = risques.length>0 ? Math.round((risqAcc.length/risques.length)*100) : 100;
+    const tauxMaitrise = risques.length>0 ? Math.round((risqAcc.length/risques.length)*100) : null;
 
     // Satisfaction
-    const moyenneSat = sat.length>0 ? +(sat.reduce((s,a)=>s+Number(a.note_globale),0)/sat.length).toFixed(1) : null;
+    // moyenneSat : null si aucune enquête. safeNumber ignore les notes vides/invalides.
+    const notesValides = sat.map(a => safeNumber(a.note_globale, NaN)).filter(n => Number.isFinite(n));
+    const moyenneSat = notesValides.length>0
+      ? +(notesValides.reduce((s,n)=>s+n,0)/notesValides.length).toFixed(1)
+      : null;
 
     // NC
-    const tauxNC = ncs.length>0 ? Math.round((ncs.filter(n=>n.statut_nc==='Clôturée').length/ncs.length)*100) : 100;
+    const tauxNC = ncs.length>0 ? Math.round((ncs.filter(n=>n.statut_nc==='Clôturée').length/ncs.length)*100) : null;
 
     // Score global
     const scoreSecurite = Math.max(0, 100 - TF*5 - accidents.filter(a=>a.type_evenement==='Soins (sans arrêt)').length*2);
-    const scoreGlobal   = Math.round((scoreSecurite + tauxCloture + tauxHabs + tauxMaitrise) / 4);
+    // scoreGlobal : moyenne des composantes réellement disponibles uniquement.
+    // Évite qu'un module non alimenté (null) ne tire la moyenne vers 0 ou ne la gonfle à 100.
+    const composantesScore = [scoreSecurite, tauxCloture, tauxHabs, tauxMaitrise].filter(v => v !== null);
+    const scoreGlobal = composantesScore.length>0
+      ? Math.round(composantesScore.reduce((s,v)=>s+v,0) / composantesScore.length)
+      : null;
 
     // Graphique évolution accidentologie par mois
     const accMap={};
@@ -165,8 +177,14 @@ export default function KPIsSecurite() {
   // ── Composant KPI Card ────────────────────────────────────────────────────
   const KpiCard = ({ titre, valeur, unite='', icone, couleur, sous_titre, objKey, inverse=false }) => {
     const obj = objKey ? objectifs[objKey] : undefined;
-    const ok  = obj!==undefined ? (inverse ? valeur<=obj : valeur>=obj) : null;
-    const pct = obj!==undefined && obj>0 ? Math.min(100, Math.round((inverse ? Math.max(0,obj-valeur)/obj : valeur/obj)*100)) : null;
+    // hasData = false si valeur null/undefined (module non alimenté).
+    // Dans ce cas on affiche "N/A", on neutralise l'évaluation d'objectif
+    // (éviter "Objectif manqué" alors qu'il n'y a simplement pas de donnée).
+    const hasData = valeur !== null && valeur !== undefined && valeur !== '';
+    const ok  = hasData && obj!==undefined ? (inverse ? valeur<=obj : valeur>=obj) : null;
+    const pct = hasData && obj!==undefined && obj>0
+      ? Math.min(100, Math.round((inverse ? Math.max(0,obj-valeur)/obj : valeur/obj)*100))
+      : null;
     const COLORS = {
       red:    {border:'border-red-500',    bg:'bg-red-500/10',    text:'text-red-400'},
       amber:  {border:'border-amber-500',  bg:'bg-amber-500/10',  text:'text-amber-400'},
@@ -182,16 +200,22 @@ export default function KPIsSecurite() {
           <div className={`p-2.5 rounded-xl ${cc.bg} ${cc.text} shrink-0 ml-2`}>{icone}</div>
         </div>
         <div className="flex items-baseline gap-2">
-          <h4 className="text-4xl font-black text-white">{valeur}</h4>
-          {unite && <span className="text-slate-400 text-sm">{unite}</span>}
+          <h4 className="text-4xl font-black text-white">{hasData ? valeur : 'N/A'}</h4>
+          {hasData && unite && <span className="text-slate-400 text-sm">{unite}</span>}
         </div>
         {sous_titre && <p className="text-xs text-slate-500 mt-1">{sous_titre}</p>}
         {obj!==undefined && (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-xs font-bold ${ok?'text-emerald-400':'text-amber-400'}`}>
-                {ok ? '✓ Objectif atteint' : '⚠ Objectif manqué'} ({inverse?'≤':'≥'}{obj}{unite})
-              </span>
+              {ok === null ? (
+                <span className="text-xs font-bold text-slate-500">
+                  ⌀ Donnée non disponible (obj. {inverse?'≤':'≥'}{obj}{unite})
+                </span>
+              ) : (
+                <span className={`text-xs font-bold ${ok?'text-emerald-400':'text-amber-400'}`}>
+                  {ok ? '✓ Objectif atteint' : '⚠ Objectif manqué'} ({inverse?'≤':'≥'}{obj}{unite})
+                </span>
+              )}
               {pct!==null && <span className="text-xs text-slate-500">{pct}%</span>}
             </div>
             {pct!==null && (
@@ -211,20 +235,30 @@ export default function KPIsSecurite() {
     </div>
   );
 
-  const scoreColor = c.scoreGlobal>=80?'#10B981':c.scoreGlobal>=60?'#F59E0B':'#EF4444';
+  // scoreColor : gris neutre si aucun module n'est alimenté (scoreGlobal === null).
+  // Sinon échelle verte / ambre / rouge classique.
+  const scoreColor = c.scoreGlobal === null ? '#64748B'
+    : c.scoreGlobal>=80 ? '#10B981'
+    : c.scoreGlobal>=60 ? '#F59E0B'
+    : '#EF4444';
 
-  // Atteinte objectifs
+  // Atteinte objectifs.
+  // `hasData` distingue "objectif manqué" (donnée mesurée, sous la cible) de
+  // "objectif non mesurable" (pas de donnée — ne doit pas polluer le ratio
+  // d'atteinte ni apparaître comme un échec rouge/ambre).
   const objectifsCheck = [
-    {label:'Taux de Fréquence',   val:c.TF,         obj:objectifs.TF,           inverse:true,  ok:c.TF<=objectifs.TF},
-    {label:'Taux de Gravité',     val:c.TG,         obj:objectifs.TG,           inverse:true,  ok:c.TG<=objectifs.TG},
-    {label:'Clôture PDCA',        val:`${c.tauxCloture}%`, obj:`≥${objectifs.tauxCloture}%`,inverse:false, ok:c.tauxCloture>=objectifs.tauxCloture},
-    {label:'Habilitations valides',val:`${c.tauxHabs}%`,   obj:`≥${objectifs.tauxHabs}%`,  inverse:false, ok:c.tauxHabs>=objectifs.tauxHabs},
-    {label:'Maîtrise risques',    val:`${c.tauxMaitrise}%`,obj:`≥${objectifs.tauxMaitrise}%`,inverse:false,ok:c.tauxMaitrise>=objectifs.tauxMaitrise},
-    {label:'AT avec arrêt',       val:c.accArret,   obj:`≤${objectifs.accArret}`, inverse:true,  ok:c.accArret<=objectifs.accArret},
-    {label:'Actions en retard',   val:c.actRetard,  obj:`≤${objectifs.actionsRetard}`,inverse:true,ok:c.actRetard<=objectifs.actionsRetard},
-    {label:'Satisfaction client', val:c.moyenneSat||'—', obj:`≥${objectifs.satisfaction}/10`,inverse:false,ok:c.moyenneSat>=objectifs.satisfaction},
+    {label:'Taux de Fréquence',   val:c.TF,         obj:objectifs.TF,           inverse:true,  hasData:true,                 ok:c.TF<=objectifs.TF},
+    {label:'Taux de Gravité',     val:c.TG,         obj:objectifs.TG,           inverse:true,  hasData:true,                 ok:c.TG<=objectifs.TG},
+    {label:'Clôture PDCA',        val:c.tauxCloture!==null?`${c.tauxCloture}%`:'N/A',   obj:`≥${objectifs.tauxCloture}%`,  inverse:false, hasData:c.tauxCloture!==null,  ok:c.tauxCloture!==null  && c.tauxCloture>=objectifs.tauxCloture},
+    {label:'Habilitations valides',val:c.tauxHabs!==null?`${c.tauxHabs}%`:'N/A',        obj:`≥${objectifs.tauxHabs}%`,     inverse:false, hasData:c.tauxHabs!==null,     ok:c.tauxHabs!==null     && c.tauxHabs>=objectifs.tauxHabs},
+    {label:'Maîtrise risques',    val:c.tauxMaitrise!==null?`${c.tauxMaitrise}%`:'N/A', obj:`≥${objectifs.tauxMaitrise}%`, inverse:false, hasData:c.tauxMaitrise!==null, ok:c.tauxMaitrise!==null && c.tauxMaitrise>=objectifs.tauxMaitrise},
+    {label:'AT avec arrêt',       val:c.accArret,   obj:`≤${objectifs.accArret}`, inverse:true,  hasData:true,                 ok:c.accArret<=objectifs.accArret},
+    {label:'Actions en retard',   val:c.actRetard,  obj:`≤${objectifs.actionsRetard}`,inverse:true,hasData:true,                 ok:c.actRetard<=objectifs.actionsRetard},
+    {label:'Satisfaction client', val:c.moyenneSat!==null?c.moyenneSat:'N/A',           obj:`≥${objectifs.satisfaction}/10`,inverse:false,hasData:c.moyenneSat!==null,   ok:c.moyenneSat!==null   && c.moyenneSat>=objectifs.satisfaction},
   ];
-  const nbAtteints = objectifsCheck.filter(o=>o.ok).length;
+  const nbAtteints   = objectifsCheck.filter(o => o.hasData && o.ok).length;
+  const nbEvaluables = objectifsCheck.filter(o => o.hasData).length;
+  const nbNonMesures = objectifsCheck.length - nbEvaluables;
 
   return (
     <div className="space-y-5 pb-10">
@@ -288,13 +322,20 @@ export default function KPIsSecurite() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="glass-panel p-6 text-center flex flex-col items-center justify-center">
           <div style={{width:96,height:96,borderRadius:'50%',border:`4px solid ${scoreColor}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',boxShadow:`0 0 28px ${scoreColor}25`,marginBottom:10}}>
-            <span style={{fontSize:30,fontWeight:900,color:scoreColor,lineHeight:1}}>{c.scoreGlobal}</span>
-            <span style={{fontSize:10,color:p.text3}}>/100</span>
+            <span style={{fontSize:c.scoreGlobal===null?18:30,fontWeight:900,color:scoreColor,lineHeight:1}}>
+              {c.scoreGlobal===null ? 'N/A' : c.scoreGlobal}
+            </span>
+            {c.scoreGlobal!==null && <span style={{fontSize:10,color:p.text3}}>/100</span>}
           </div>
-          <p style={{fontSize:15,fontWeight:800,color:scoreColor}}>{c.scoreGlobal>=80?'Excellent':c.scoreGlobal>=60?'Satisfaisant':'À améliorer'}</p>
+          <p style={{fontSize:15,fontWeight:800,color:scoreColor}}>
+            {c.scoreGlobal===null ? 'Données insuffisantes' :
+             c.scoreGlobal>=80 ? 'Excellent' :
+             c.scoreGlobal>=60 ? 'Satisfaisant' : 'À améliorer'}
+          </p>
           <p style={{fontSize:11,color:p.text4,marginTop:2}}>Score global SMI</p>
-          <p style={{fontSize:12,marginTop:12,color:nbAtteints>=objectifsCheck.length?'#10B981':'#F59E0B',fontWeight:700}}>
-            {nbAtteints}/{objectifsCheck.length} objectifs atteints
+          <p style={{fontSize:12,marginTop:12,color:nbEvaluables>0 && nbAtteints>=nbEvaluables?'#10B981':'#F59E0B',fontWeight:700}}>
+            {nbAtteints}/{nbEvaluables} objectif{nbEvaluables>1?'s':''} atteint{nbAtteints>1?'s':''}
+            {nbNonMesures>0 && ` (${nbNonMesures} non mesuré${nbNonMesures>1?'s':''})`}
           </p>
           <p style={{fontSize:11,color:p.text4}}>Base : {c.heures.toLocaleString('fr-FR')} h</p>
         </div>
@@ -302,14 +343,19 @@ export default function KPIsSecurite() {
         <div className="glass-panel p-5 lg:col-span-2">
           <h3 className="text-white font-bold mb-3 flex items-center gap-2"><Target size={16} className="text-blue-400"/> Atteinte des objectifs</h3>
           <div className="grid grid-cols-2 gap-2">
-            {objectifsCheck.map((o,i) => (
-              <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:p.whiteFaint2,borderRadius:8,border:`1px solid ${o.ok?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'}`}}>
-                <div style={{width:8,height:8,borderRadius:'50%',background:o.ok?'#10B981':'#F59E0B',flexShrink:0}}/>
-                <span style={{flex:1,fontSize:12,color:p.text2}}>{o.label}</span>
-                <span style={{fontSize:12,fontWeight:700,color:o.ok?'#10B981':'#F59E0B'}}>{o.val}</span>
-                <span style={{fontSize:10,color:p.text4}}>obj:{o.obj}</span>
-              </div>
-            ))}
+            {objectifsCheck.map((o,i) => {
+              // 3 états visuels : vert (atteint), ambre (manqué avec donnée), gris (non mesuré).
+              const color      = !o.hasData ? '#64748B' : o.ok ? '#10B981' : '#F59E0B';
+              const borderColor = !o.hasData ? 'rgba(100,116,139,0.2)' : o.ok ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)';
+              return (
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:p.whiteFaint2,borderRadius:8,border:`1px solid ${borderColor}`}}>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:color,flexShrink:0}}/>
+                  <span style={{flex:1,fontSize:12,color:p.text2}}>{o.label}</span>
+                  <span style={{fontSize:12,fontWeight:700,color}}>{o.val}</span>
+                  <span style={{fontSize:10,color:p.text4}}>obj:{o.obj}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -329,10 +375,10 @@ export default function KPIsSecurite() {
       <div>
         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Target size={14} className="text-blue-400"/> Taux de Conformité</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard titre="Clôture Plan d'Actions" valeur={c.tauxCloture} unite="%" icone={<CheckCircle size={22}/>} couleur={c.tauxCloture>=objectifs.tauxCloture?'green':c.tauxCloture>=50?'amber':'red'} sous_titre={`${c.actTerminees}/${c.totalActions} terminées`} objKey="tauxCloture"/>
+          <KpiCard titre="Clôture Plan d'Actions" valeur={c.tauxCloture} unite="%" icone={<CheckCircle size={22}/>} couleur={c.tauxCloture===null?'blue':c.tauxCloture>=objectifs.tauxCloture?'green':c.tauxCloture>=50?'amber':'red'} sous_titre={`${c.actTerminees}/${c.totalActions} terminées`} objKey="tauxCloture"/>
           <KpiCard titre="Actions en retard" valeur={c.actRetard} icone={<AlertTriangle size={22}/>} couleur={c.actRetard===0?'green':'red'} sous_titre="Échéances dépassées" objKey="actionsRetard" inverse/>
-          <KpiCard titre="Habilitations valides" valeur={c.tauxHabs} unite="%" icone={<CheckCircle size={22}/>} couleur={c.tauxHabs>=objectifs.tauxHabs?'green':c.tauxHabs>=70?'amber':'red'} sous_titre={`${c.habValides}/${c.totalHabs} habilitations`} objKey="tauxHabs"/>
-          <KpiCard titre="Maîtrise des risques" valeur={c.tauxMaitrise} unite="%" icone={<Shield size={22}/>} couleur={c.tauxMaitrise>=objectifs.tauxMaitrise?'green':'amber'} sous_titre={`${c.risqAcc} acceptables / ${c.risqCrit} critiques`} objKey="tauxMaitrise"/>
+          <KpiCard titre="Habilitations valides" valeur={c.tauxHabs} unite="%" icone={<CheckCircle size={22}/>} couleur={c.tauxHabs===null?'blue':c.tauxHabs>=objectifs.tauxHabs?'green':c.tauxHabs>=70?'amber':'red'} sous_titre={`${c.habValides}/${c.totalHabs} habilitations`} objKey="tauxHabs"/>
+          <KpiCard titre="Maîtrise des risques" valeur={c.tauxMaitrise} unite="%" icone={<Shield size={22}/>} couleur={c.tauxMaitrise===null?'blue':c.tauxMaitrise>=objectifs.tauxMaitrise?'green':'amber'} sous_titre={`${c.risqAcc} acceptables / ${c.risqCrit} critiques`} objKey="tauxMaitrise"/>
         </div>
       </div>
 
