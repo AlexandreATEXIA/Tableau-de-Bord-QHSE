@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { useTheme } from './ThemeContext';
 import { useConfig } from './ConfigContext';
+import { tauxAtteinteObjectif } from './utils/kpi';
 import {
   Target, Plus, Edit2, Trash2, Save, X, CheckCircle,
   AlertTriangle, TrendingUp, TrendingDown, ShieldAlert,
@@ -321,13 +322,10 @@ export default function ObjectifsQHSE() {
   }
 
   function getPct(obj) {
-    const reel = getValeurReelle(obj) ?? obj.valeur_reelle ?? 0;
-    const cible = Number(obj.valeur_cible) || 1;
-    if (obj.sens === 'min') {
-      if (reel === 0 && cible === 0) return 100;
-      return reel <= cible ? 100 : Math.max(0, Math.round((1 - (reel - cible) / cible) * 100));
-    }
-    return Math.min(100, Math.round(reel / cible * 100));
+    const reel  = getValeurReelle(obj) ?? obj.valeur_reelle ?? 0;
+    const cible = obj.valeur_cible;  // NE PAS remplacer 0 par 1 — cible=0 est légitime (objectif "zéro")
+    const sens  = obj.sens === 'min' ? 'min' : 'max';
+    return tauxAtteinteObjectif(reel, cible, sens);
   }
 
   function getStatut(pct, obj) {

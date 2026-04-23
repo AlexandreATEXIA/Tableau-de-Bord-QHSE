@@ -2,6 +2,7 @@ import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { useConfig } from './ConfigContext';
+import { safeDate, diffJours } from './utils/kpi';
 import {
   FileText, RefreshCw, Download, CheckCircle, AlertTriangle,
   Clock, TrendingUp, TrendingDown, Shield, Users, Activity,
@@ -9,10 +10,20 @@ import {
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// calcExp : expiration d'une habilitation (obtention + N années). Retourne null
+// si la date d'obtention est invalide — évite 1970-01-01 propagé en cascade.
 const calcExp = (obt, val) => {
-  const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
+  const d = safeDate(obt);
+  if (d === null) return null;
+  const annees = Number(val);
+  if (!Number.isFinite(annees)) return null;
+  d.setFullYear(d.getFullYear() + annees);
+  return d;
 };
-const diffJ = (ds) => Math.ceil((new Date(ds) - new Date()) / 86400000);
+// diffJ : alias vers utils/kpi.diffJours. Retourne null si date invalide —
+// les comparaisons `null < 0` valent `false`, donc une action sans échéance
+// valide n'est plus faussement comptée "en retard depuis 1970".
+const diffJ = (ds) => diffJours(ds);
 
 function getStatutColor(val, seuil1, seuil2, inverse = false) {
   if (inverse) return val <= seuil1 ? '#10B981' : val <= seuil2 ? '#F59E0B' : '#EF4444';

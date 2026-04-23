@@ -10,11 +10,20 @@ import {
   CartesianGrid, BarChart, Bar, ReferenceLine, LineChart, Line, Cell
 } from 'recharts';
 import { useConfig } from './ConfigContext';
+import { safeDate, diffJours } from './utils/kpi';
 
 const OBJ_DEFAULTS = { TF:10, TG:1, tauxCloture:70, tauxHabs:90, tauxMaitrise:70, accArret:0, actionsRetard:0, satisfaction:7 };
 
+// calcExp : expiration d'une habilitation (obtention + N années).
+// Retourne null si obtention invalide ou validiteAns non numérique —
+// évite 1970-01-01 fantôme qui rendait toutes les habilitations "périmées".
 function calcExp(obt, val) {
-  const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
+  const d = safeDate(obt);
+  if (d === null) return null;
+  const annees = Number(val);
+  if (!Number.isFinite(annees)) return null;
+  d.setFullYear(d.getFullYear() + annees);
+  return d;
 }
 
 export default function KPIsSecurite() {
@@ -84,7 +93,15 @@ export default function KPIsSecurite() {
 
     // Actions
     const actTerminees = actions.filter(a => a.statut?.includes('Terminé'));
-    const actRetard    = actions.filter(a => a.echeance && !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé') && Math.ceil((new Date(a.echeance)-now)/86400000)<0);
+    // Une action est "en retard" si elle a une échéance VALIDE passée. Une date
+    // absente ou mal-formée n'est plus comptée comme retard (diffJours → null,
+    // et null < 0 === false).
+    const actRetard    = actions.filter(a => {
+      if (!a.echeance) return false;
+      if (a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return false;
+      const dj = diffJours(a.echeance, now);
+      return dj !== null && dj < 0;
+    });
     const tauxCloture  = actions.length>0 ? Math.round((actTerminees.length/actions.length)*100) : 0;
     const parDomaine   = ['Qualité','Sécurité','Environnement','Énergie','RSE / Transverse'].map(d => {
       const total = actions.filter(a=>a.domaine===d).length;
