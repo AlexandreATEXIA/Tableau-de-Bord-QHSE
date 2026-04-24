@@ -2,7 +2,7 @@ import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { useConfig } from './ConfigContext';
-import { safeDate, diffJours, safeMean } from './utils/kpi';
+import { diffJours, safeMean, calcExpiration } from './utils/kpi';
 import {
   FileText, RefreshCw, Download, CheckCircle, AlertTriangle,
   Clock, TrendingUp, TrendingDown, Shield, Users, Activity,
@@ -10,20 +10,8 @@ import {
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-// calcExp : expiration d'une habilitation (obtention + N années). Retourne null
-// si la date d'obtention est invalide — évite 1970-01-01 propagé en cascade.
-const calcExp = (obt, val) => {
-  const d = safeDate(obt);
-  if (d === null) return null;
-  const annees = Number(val);
-  if (!Number.isFinite(annees)) return null;
-  d.setFullYear(d.getFullYear() + annees);
-  return d;
-};
-// diffJ : alias vers utils/kpi.diffJours. Retourne null si date invalide —
-// les comparaisons `null < 0` valent `false`, donc une action sans échéance
-// valide n'est plus faussement comptée "en retard depuis 1970".
-const diffJ = (ds) => diffJours(ds);
+// Les fonctions calcExp et diffJ locales ont été consolidées vers utils/kpi.js
+// (`calcExpiration` + `diffJours`) pour éviter les implémentations divergentes.
 
 function getStatutColor(val, seuil1, seuil2, inverse = false) {
   if (inverse) return val <= seuil1 ? '#10B981' : val <= seuil2 ? '#F59E0B' : '#EF4444';
@@ -76,11 +64,29 @@ export default function RevueDirection() {
     const TG = joursPerdus > 0   ? ((joursPerdus * 1000)        / heures).toFixed(2) : '0.00';
 
     const actTerminees  = actions.filter(a => a.statut?.includes('Terminé'));
-    const actRetard     = actions.filter(a => a.echeance && !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé') && diffJ(a.echeance) < 0);
+    // actRetard : échéance VALIDE et passée. `diffJours` retourne null si la date est
+    // mal-formée → garde `dj !== null` explicite (sinon `null < 0` vaut false par
+    // coercion, ce qui marche fortuitement ici mais reste fragile à relire).
+    const now = new Date();
+    const actRetard     = actions.filter(a => {
+      if (!a.echeance) return false;
+      if (a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return false;
+      const dj = diffJours(a.echeance, now);
+      return dj !== null && dj < 0;
+    });
     const tauxCloture   = actions.length > 0 ? Math.round((actTerminees.length / actions.length) * 100) : 0;
 
-    const habsValides   = habilitations.filter(h => h.obtention && calcExp(h.obtention, h.validiteAns) > new Date());
-    const habsPerimees  = habilitations.filter(h => h.obtention && calcExp(h.obtention, h.validiteAns) <= new Date());
+    // habsValides / habsPerimees : `calcExpiration` peut retourner null (obtention manquante
+    // ou validiteAns non-numérique). Sans garde `e !== null`, la coercion `null <= new Date()`
+    // vaut `true` et gonfle faussement le compteur périmées (bug 2C.2c L83 corrigé).
+    const habsValides   = habilitations.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      return e !== null && e > now;
+    });
+    const habsPerimees  = habilitations.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      return e !== null && e <= now;
+    });
     const tauxHabs      = habilitations.length > 0 ? Math.round((habsValides.length / habilitations.length) * 100) : 100;
 
     const risquesCritiques = risques.filter(r => (r.criticite || 1) >= 9);

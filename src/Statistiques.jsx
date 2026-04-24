@@ -1,7 +1,7 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
-import { safeDate, safeNumber, toPercent, diffJours, safeMean } from './utils/kpi';
+import { safeNumber, toPercent, diffJours, safeMean, calcExpiration } from './utils/kpi';
 import { BarChart2, RefreshCw, TrendingUp, TrendingDown, Activity, Shield, Target, Users } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -105,24 +105,23 @@ export default function Statistiques() {
     ];
 
     // ── Habilitations par statut ────────────────────────────────────────
-    // calcExp sécurisé : retourne null si obtention invalide ou validité non-numérique.
-    // Les comparaisons avec null (`null > Date`, `null <= Date`) donnent des résultats
-    // prévisibles : null est coerced à 0 → toujours <= Date récente → habilitations à
-    // date invalide seront comptées comme "périmées" (signale l'anomalie côté saisie).
-    const calcExp = (obt, val) => {
-      const d = safeDate(obt);
-      if (d === null) return null;
-      const annees = safeNumber(val, NaN);
-      if (!Number.isFinite(annees)) return null;
-      d.setFullYear(d.getFullYear() + annees);
-      return d;
-    };
-    const habsValides   = habilitations.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e !== null && e > new Date(); }).length;
-    const habsPerimees  = habilitations.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e !== null && e <= new Date(); }).length;
+    // `calcExpiration` (utils/kpi) : source unique partagée avec les autres modules.
+    // Retourne null si obtention invalide ou validité non-numérique → garde `e !== null`
+    // OBLIGATOIRE avant toute comparaison de Date (la coercion `null <= new Date()` vaut
+    // `true` et gonflerait faussement le compteur `habsPerimees`).
+    const now = new Date();
+    const habsValides   = habilitations.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      return e !== null && e > now;
+    }).length;
+    const habsPerimees  = habilitations.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      return e !== null && e <= now;
+    }).length;
     const habsBientot   = habilitations.filter(h => {
-      const e = calcExp(h.obtention, h.validiteAns);
+      const e = calcExpiration(h.obtention, h.validiteAns);
       if (e === null) return false;
-      const dj = diffJours(e);
+      const dj = diffJours(e, now);
       return dj !== null && dj >= 0 && dj <= 30;
     }).length;
     const habsParStatut = [
