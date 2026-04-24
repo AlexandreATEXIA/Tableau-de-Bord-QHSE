@@ -10,21 +10,9 @@ import {
   CartesianGrid, BarChart, Bar, ReferenceLine, LineChart, Line, Cell
 } from 'recharts';
 import { useConfig } from './ConfigContext';
-import { safeDate, diffJours, safeNumber } from './utils/kpi';
+import { diffJours, safeNumber, calcExpiration } from './utils/kpi';
 
 const OBJ_DEFAULTS = { TF:10, TG:1, tauxCloture:70, tauxHabs:90, tauxMaitrise:70, accArret:0, actionsRetard:0, satisfaction:7 };
-
-// calcExp : expiration d'une habilitation (obtention + N années).
-// Retourne null si obtention invalide ou validiteAns non numérique —
-// évite 1970-01-01 fantôme qui rendait toutes les habilitations "périmées".
-function calcExp(obt, val) {
-  const d = safeDate(obt);
-  if (d === null) return null;
-  const annees = Number(val);
-  if (!Number.isFinite(annees)) return null;
-  d.setFullYear(d.getFullYear() + annees);
-  return d;
-}
 
 export default function KPIsSecurite() {
   const { p, isDark } = useTheme();
@@ -111,7 +99,13 @@ export default function KPIsSecurite() {
     }).filter(d=>d.total>0);
 
     // Habilitations
-    const habValides   = habs.filter(h => h.obtention && calcExp(h.obtention,h.validiteAns)>now);
+    // Une habilitation est "valide" si sa date d'expiration est définie ET future.
+    // `calcExpiration` peut retourner null si obtention/validité manquante ou invalide —
+    // on DOIT tester `exp !== null` explicitement (sinon `null <= now` === true côté coercion).
+    const habValides = habs.filter(h => {
+      const exp = calcExpiration(h.obtention, h.validiteAns);
+      return exp !== null && exp > now;
+    });
     // tauxHabs : null si aucune habilitation (avant: 100% faussement optimiste — bug cohérence
     // inter-modules, Statistiques affichait 0% et KPIsSecurite 100% pour le même état "vide").
     const tauxHabs     = habs.length>0 ? Math.round((habValides.length/habs.length)*100) : null;

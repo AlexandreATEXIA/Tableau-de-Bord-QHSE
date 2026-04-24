@@ -174,7 +174,7 @@ ${actAff.map(a => { const st = statAct(a); return `<tr><td>${a.domaine || ''}</t
     const habAff = opts.toutesHabs ? habs : [...habPerimees, ...habBientot];
     if (habAff.length > 0) {
       html += `<table><thead><tr><th>Employé</th><th>Habilitation</th><th>Date obtention</th><th>Expiration</th><th>Statut</th></tr></thead><tbody>
-${habAff.map(h => { const st = statHab(h); const exp = h.obtention ? calcExp(h.obtention, h.validiteAns).toLocaleDateString('fr-FR') : '—'; return `<tr><td>${h.employe || ''}</td><td>${h.domaine || ''}</td><td>${h.obtention || ''}</td><td style="color:${st === 'perime' ? '#EF4444' : st === 'bientot' ? '#F59E0B' : '#334155'};font-weight:${st !== 'valide' ? '700' : '400'}">${exp}</td><td>${st === 'perime' ? '🔴 PÉRIMÉE' : st === 'bientot' ? '🟠 Bientôt' : '🟢 Valide'}</td></tr>`; }).join('')}
+${habAff.map(h => { const st = statHab(h); const expDate = calcExpiration(h.obtention, h.validiteAns); const exp = expDate ? expDate.toLocaleDateString('fr-FR') : '—'; return `<tr><td>${h.employe || ''}</td><td>${h.domaine || ''}</td><td>${h.obtention || ''}</td><td style="color:${st === 'perime' ? '#EF4444' : st === 'bientot' ? '#F59E0B' : '#334155'};font-weight:${st !== 'valide' ? '700' : '400'}">${exp}</td><td>${st === 'perime' ? '🔴 PÉRIMÉE' : st === 'bientot' ? '🟠 Bientôt' : '🟢 Valide'}</td></tr>`; }).join('')}
 </tbody></table>`;
     } else {
       html += `<div class="alert-g">✓ Toutes les habilitations sont à jour.</div>`;

@@ -4,6 +4,7 @@ import { Plus, Trash2, GraduationCap, AlertTriangle, UserCheck, RefreshCw, Filte
 import { supabase } from './supabaseClient';
 import { InputEmploye } from './EmployesContext';
 import GestionListes from './GestionListes';
+import { calcExpiration, diffJours } from './utils/kpi';
 
 const LISTE_HABILITATIONS_DEFAULT = [
   'SST (Sauveteur Secouriste du Travail)', 'ATEX - NV0', 'ATEX - NV1', 'ATEX - NV2',
@@ -18,21 +19,18 @@ const LISTE_HABILITATIONS_DEFAULT = [
 
 const VALIDITES = [1, 2, 3, 4, 5, 10];
 
-function calcExp(obtention, validiteAns) {
-  if (!obtention) return null;
-  const d = new Date(obtention);
-  d.setFullYear(d.getFullYear() + Number(validiteAns));
-  return d;
-}
-
-function diffJours(exp) {
-  return Math.ceil((exp - new Date()) / 86400000);
-}
+// Les fonctions locales calcExp et diffJours ont été remplacées par `calcExpiration`
+// et `diffJours` importées depuis utils/kpi.js (source unique, gestion null cohérente).
 
 function getStatut(obtention, validiteAns) {
   if (!obtention) return { label: 'À définir', color: '#64748B', badge: 'badge-blue', j: null };
-  const exp = calcExp(obtention, validiteAns);
-  const j   = diffJours(exp);
+  const exp = calcExpiration(obtention, validiteAns);
+  // exp === null : validiteAns manquante/invalide — on NE DOIT PAS tomber dans les
+  // branches `j <= 30` ou `j <= 90` car `null <= N` coerce à `0 <= N === true` et
+  // classerait à tort l'habilitation comme "< 30 jours" (alerte ambre faussée).
+  if (exp === null) return { label: 'À définir', color: '#64748B', badge: 'badge-blue', j: null };
+  const j = diffJours(exp);
+  if (j === null)   return { label: 'À définir', color: '#64748B', badge: 'badge-blue', j: null };
   if (j < 0)   return { label: 'Périmée',    color: '#EF4444', badge: 'badge-red',   j };
   if (j <= 30) return { label: '< 30 jours', color: '#F59E0B', badge: 'badge-amber', j };
   if (j <= 90) return { label: '< 90 jours', color: '#3B82F6', badge: 'badge-blue',  j };
@@ -88,10 +86,33 @@ export default function Habilitations() {
   };
 
   const kpis = useMemo(() => {
-    const perimees  = habs.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e && diffJours(e) < 0; });
-    const bientot30 = habs.filter(h => { const e = calcExp(h.obtention, h.validiteAns); if (!e) return false; const j = diffJours(e); return j >= 0 && j <= 30; });
-    const bientot90 = habs.filter(h => { const e = calcExp(h.obtention, h.validiteAns); if (!e) return false; const j = diffJours(e); return j > 30 && j <= 90; });
-    const valides   = habs.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e && diffJours(e) > 90; });
+    // Chaque filtre tolère les habilitations mal-saisies (validité nulle/invalide,
+    // date absente) en les excluant de tous les compteurs plutôt que de les
+    // compter faussement comme "périmées" ou "< 30j".
+    const perimees  = habs.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      if (e === null) return false;
+      const j = diffJours(e);
+      return j !== null && j < 0;
+    });
+    const bientot30 = habs.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      if (e === null) return false;
+      const j = diffJours(e);
+      return j !== null && j >= 0 && j <= 30;
+    });
+    const bientot90 = habs.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      if (e === null) return false;
+      const j = diffJours(e);
+      return j !== null && j > 30 && j <= 90;
+    });
+    const valides   = habs.filter(h => {
+      const e = calcExpiration(h.obtention, h.validiteAns);
+      if (e === null) return false;
+      const j = diffJours(e);
+      return j !== null && j > 90;
+    });
     const employes  = [...new Set(habs.map(h => h.employe).filter(Boolean))];
     return { total: habs.length, perimees: perimees.length, bientot30: bientot30.length, bientot90: bientot90.length, valides: valides.length, employes: employes.length, taux: habs.length > 0 ? Math.round((valides.length / habs.length) * 100) : 100 };
   }, [habs]);
@@ -161,7 +182,12 @@ export default function Habilitations() {
           <AlertTriangle size={18} className="shrink-0"/>
           <div>
             <p className="font-bold">{kpis.perimees} habilitation{kpis.perimees > 1 ? 's' : ''} périmée{kpis.perimees > 1 ? 's' : ''} — Renouvellement obligatoire</p>
-            <p className="text-xs mt-0.5 opacity-80">{habs.filter(h => { const e = calcExp(h.obtention, h.validiteAns); return e && diffJours(e) < 0; }).map(h => `${h.employe} (${h.domaine?.substring(0,20)})`).join(' · ')}</p>
+            <p className="text-xs mt-0.5 opacity-80">{habs.filter(h => {
+              const e = calcExpiration(h.obtention, h.validiteAns);
+              if (e === null) return false;
+              const j = diffJours(e);
+              return j !== null && j < 0;
+            }).map(h => `${h.employe} (${h.domaine?.substring(0,20)})`).join(' · ')}</p>
           </div>
         </div>
       )}
@@ -212,7 +238,7 @@ export default function Habilitations() {
           {form.obtention && (
             <div style={{ marginTop:12, padding:'10px 14px', background:p.whiteFaint2, borderRadius:8, fontSize:13 }}>
               <span className="text-slate-400">Expiration : </span>
-              <strong style={{ color: getStatut(form.obtention, form.validiteAns).color }}>{calcExp(form.obtention, form.validiteAns)?.toLocaleDateString('fr-FR')}</strong>
+              <strong style={{ color: getStatut(form.obtention, form.validiteAns).color }}>{calcExpiration(form.obtention, form.validiteAns)?.toLocaleDateString('fr-FR') || '—'}</strong>
               <span className={`badge ${getStatut(form.obtention, form.validiteAns).badge} ml-3`}>{getStatut(form.obtention, form.validiteAns).label}</span>
             </div>
           )}
@@ -264,12 +290,12 @@ export default function Habilitations() {
                 </div>
                 {liste.map(h => {
                   const st = getStatut(h.obtention, h.validiteAns);
-                  const exp = calcExp(h.obtention, h.validiteAns);
+                  const exp = calcExpiration(h.obtention, h.validiteAns);
                   return (
                     <div key={h.id} className="flex items-center justify-between px-4 py-3 border-b border-white/4 last:border-0 hover:bg-white/2">
                       <div>
                         <p className="text-white text-sm font-medium">{h.domaine}</p>
-                        <p className="text-slate-500 text-xs mt-0.5">Obtenu le {h.obtention} · {h.validiteAns}an{h.validiteAns > 1 ? 's' : ''} · Expire le {exp?.toLocaleDateString('fr-FR')}</p>
+                        <p className="text-slate-500 text-xs mt-0.5">Obtenu le {h.obtention || '—'} · {h.validiteAns}an{h.validiteAns > 1 ? 's' : ''} · Expire le {exp?.toLocaleDateString('fr-FR') || '—'}</p>
                       </div>
                       <span className={`badge ${st.badge}`}>{st.label}{st.j !== null && st.j >= 0 ? ` · ${st.j}j` : ''}</span>
                     </div>
@@ -294,7 +320,7 @@ export default function Habilitations() {
                 <tbody>
                   {habsFiltrees.map(row => {
                     const st = getStatut(row.obtention, row.validiteAns);
-                    const exp = calcExp(row.obtention, row.validiteAns);
+                    const exp = calcExpiration(row.obtention, row.validiteAns);
                     return (
                       <tr key={row.id} style={st.label === 'Périmée' ? { borderLeft:'3px solid #EF4444' } : st.label === '< 30 jours' ? { borderLeft:'3px solid #F59E0B' } : {}}>
                         <td><InputEmploye value={row.employe||''} onChange={e => updateRow(row.id,'employe',e.target.value)} onBlur={() => saveRow(habs.find(h => h.id===row.id))} style={{padding:'5px 8px',fontSize:13}}/></td>
