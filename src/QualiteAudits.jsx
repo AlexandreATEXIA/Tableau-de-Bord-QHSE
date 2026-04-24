@@ -4,6 +4,7 @@ import { Plus, Save, Trash2, ClipboardCheck, AlertTriangle, Star, RefreshCw, Smi
 import { supabase } from './supabaseClient';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import GestionListes from './GestionListes';
+import { safeMean } from './utils/kpi';
 
 /* ─── Listes par défaut ──────────────────────────────────────────────────── */
 const DEF_PROCESSUS   = ['Direction','RH','QHSE','Achats','Commercial','Production','Maintenance','IT','Logistique'];
@@ -144,8 +145,13 @@ export default function QualiteAudits() {
     realises:   audits.filter(a => a.statut === 'Réalisé').length,
     enCours:    audits.filter(a => a.statut === 'En cours').length,
     planifies:  audits.filter(a => a.statut === 'Planifié').length,
-    scoreMoyen: audits.filter(a => a.score > 0).length > 0
-      ? Math.round(audits.filter(a=>a.score>0).reduce((s,a)=>s+Number(a.score),0) / audits.filter(a=>a.score>0).length) : 0,
+    // safeMean ignore les valeurs non-finies (null/NaN). Filtre `score > 0`
+    // conservé : exclut les audits non notés (planifiés/reportés). Fallback 0
+    // préservé pour l'affichage « pas encore de score ».
+    scoreMoyen: (() => {
+      const agg = safeMean(audits.filter(a => a.score > 0), a => a.score);
+      return agg.hasData ? Math.round(agg.value) : 0;
+    })(),
   }), [audits]);
 
   const kpiNCs = useMemo(() => ({

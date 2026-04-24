@@ -2,6 +2,7 @@ import { useTheme } from './ThemeContext';
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import { FileText, Download, Loader, CheckCircle, Settings, Building2, Calendar, FileDown } from 'lucide-react';
+import { safeMean, safeNumber } from './utils/kpi';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const diffJ    = (ds) => Math.ceil((new Date(ds) - new Date()) / 86400000);
@@ -36,10 +37,15 @@ function buildHTML(data, opts, cfg) {
   const ncOuv        = ncs.filter(n => n.statut_nc === 'Ouverte' || !n.statut_nc);
   const tauxNC       = ncs.length > 0 ? Math.round((ncs.filter(n => n.statut_nc === 'Clôturée').length / ncs.length) * 100) : 100;
 
-  const moyenneSat   = sat.length > 0 ? (sat.reduce((s, a) => s + Number(a.note_globale), 0) / sat.length).toFixed(1) : '—';
-  const moyenneQvt   = qvt.length > 0 ? (qvt.reduce((s, q) => s + Number(q.note_moyenne), 0) / qvt.length).toFixed(1) : '—';
+  // safeMean ignore les valeurs non-finies (null/NaN) → une seule note vide en
+  // base ne pollue plus la moyenne. Fallbacks '—' préservés. safeNumber(TF, 0)
+  // protège scoreGlobal contre un TF non numérique (ex: si TF revient 'NaN').
+  const satAgg       = safeMean(sat, a => a.note_globale);
+  const moyenneSat   = satAgg.hasData ? satAgg.value.toFixed(1) : '—';
+  const qvtAgg       = safeMean(qvt, q => q.note_moyenne);
+  const moyenneQvt   = qvtAgg.hasData ? qvtAgg.value.toFixed(1) : '—';
 
-  const scoreGlobal  = Math.round((Math.max(0, 100 - Number(TF)*5) + tauxPDCA + tauxHabs + (risques.length > 0 ? Math.round((risqAcc.length/risques.length)*100) : 100)) / 4);
+  const scoreGlobal  = Math.round((Math.max(0, 100 - safeNumber(TF, 0)*5) + tauxPDCA + tauxHabs + (risques.length > 0 ? Math.round((risqAcc.length/risques.length)*100) : 100)) / 4);
   const scoreColor   = scoreGlobal >= 80 ? '#10B981' : scoreGlobal >= 60 ? '#F59E0B' : '#EF4444';
   const scoreLabel   = scoreGlobal >= 80 ? 'Excellent' : scoreGlobal >= 60 ? 'Satisfaisant' : 'À améliorer';
 

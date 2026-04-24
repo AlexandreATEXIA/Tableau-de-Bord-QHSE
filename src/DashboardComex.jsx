@@ -12,6 +12,7 @@ import {
 import { useConfig } from './ConfigContext';
 import { Settings, X } from 'lucide-react';
 import AgendaSemaine from './AgendaSemaine';
+import { safeMean, safeNumber } from './utils/kpi';
 
 function calcExp(obt, val) {
   const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
@@ -68,8 +69,13 @@ export default function DashboardComex({ onNavigate }) {
     const ncOuvertes  = ncs.filter(n=>n.statut_nc==='Ouverte'||!n.statut_nc);
     const tauxNC      = ncs.length>0 ? Math.round((ncs.filter(n=>n.statut_nc==='Clôturée').length/ncs.length)*100) : 100;
 
-    const moyenneSat  = sat.length>0 ? (sat.reduce((s,a)=>s+Number(a.note_globale),0)/sat.length).toFixed(1) : null;
-    const scoreAudit  = audits.filter(a=>a.score>0).length>0 ? Math.round(audits.filter(a=>a.score>0).reduce((s,a)=>s+Number(a.score),0)/audits.filter(a=>a.score>0).length) : 50;
+    // safeMean ignore les valeurs non-finies (null/NaN) → une seule note vide en
+    // base ne pollue plus la moyenne. Fallbacks préservés (null pour moyenneSat,
+    // 50 pour scoreAudit) pour ne pas casser le calcul de scoreGlobal en aval.
+    const satAgg      = safeMean(sat, a => a.note_globale);
+    const moyenneSat  = satAgg.hasData ? satAgg.value.toFixed(1) : null;
+    const scoreAuditAgg = safeMean(audits.filter(a => a.score > 0), a => a.score);
+    const scoreAudit  = scoreAuditAgg.hasData ? Math.round(scoreAuditAgg.value) : 50;
     const scoreSecurite = Math.max(0,100-accArret.length*15);
     const scoreHabs   = habs.length>0 ? Math.round(((habs.length-habsPerimees.length)/habs.length)*100) : 100;
     const scoreMaitrise= risques.length>0 ? Math.round((risques.filter(r=>(r.criticite||1)<4).length/risques.length)*100) : 100;
@@ -85,7 +91,9 @@ export default function DashboardComex({ onNavigate }) {
     ncs.forEach(n=>{ const m=n.date_nc?.substring(0,7); if(!m)return; if(!ncMap[m])ncMap[m]={mois:m,ouvertes:0,cloturees:0}; if(n.statut_nc==='Clôturée')ncMap[m].cloturees++; else ncMap[m].ouvertes++; });
     const ncChart=Object.values(ncMap).sort((a,b)=>a.mois.localeCompare(b.mois)).slice(-12);
 
-    const satChart=sat.slice(-12).map(s=>({ date:s.date_enquete?.substring(0,7)||s.client, note:Number(s.note_globale) }));
+    // note: safeNumber(..., null) → Recharts affiche un gap propre au lieu
+    // d'un NaN qui casse la courbe si une note_globale est vide en base.
+    const satChart=sat.slice(-12).map(s=>({ date:s.date_enquete?.substring(0,7)||s.client, note:safeNumber(s.note_globale, null) }));
 
     const radarData=[
       {subject:'Sécurité', A:scoreSecurite},

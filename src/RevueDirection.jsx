@@ -2,7 +2,7 @@ import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { useConfig } from './ConfigContext';
-import { safeDate, diffJours } from './utils/kpi';
+import { safeDate, diffJours, safeMean } from './utils/kpi';
 import {
   FileText, RefreshCw, Download, CheckCircle, AlertTriangle,
   Clock, TrendingUp, TrendingDown, Shield, Users, Activity,
@@ -90,15 +90,18 @@ export default function RevueDirection() {
     const ncCloturees = ncs.filter(n => n.statut_nc === 'Clôturée');
     const tauxNC      = ncs.length > 0 ? Math.round((ncCloturees.length / ncs.length) * 100) : 100;
 
-    const scoreAudit  = audits.filter(a => a.score > 0).length > 0
-      ? Math.round(audits.filter(a => a.score > 0).reduce((s, a) => s + Number(a.score), 0) / audits.filter(a => a.score > 0).length)
-      : 0;
+    // Moyennes défensives : `safeMean` ignore les valeurs non-finies (null/NaN)
+    // → une seule note vide en base ne pollue plus toute la moyenne. Fallbacks
+    // préservés (0 pour scoreAudit, '—' pour les notes) pour ne pas casser le
+    // calcul de scoreGlobal en aval.
+    const scoreAuditAgg = safeMean(audits.filter(a => a.score > 0), a => a.score);
+    const scoreAudit    = scoreAuditAgg.hasData ? Math.round(scoreAuditAgg.value) : 0;
 
-    const moyenneSat = satisfaction.length > 0
-      ? (satisfaction.reduce((s, a) => s + Number(a.note_globale), 0) / satisfaction.length).toFixed(1) : '—';
+    const satAgg     = safeMean(satisfaction, a => a.note_globale);
+    const moyenneSat = satAgg.hasData ? satAgg.value.toFixed(1) : '—';
 
-    const moyenneQvt = qvt.length > 0
-      ? (qvt.reduce((s, q) => s + Number(q.note_moyenne), 0) / qvt.length).toFixed(1) : '—';
+    const qvtAgg     = safeMean(qvt, q => q.note_moyenne);
+    const moyenneQvt = qvtAgg.hasData ? qvtAgg.value.toFixed(1) : '—';
     const tauxParticipationQvt = qvt.length > 0
       ? Math.round(qvt.reduce((s, q) => s + (q.reponses || 0), 0) / Math.max(qvt.reduce((s, q) => s + (q.effectif_total || 0), 0), 1) * 100) : 0;
 
