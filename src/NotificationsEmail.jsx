@@ -6,11 +6,9 @@ import {
   Loader, Plus, Trash2, Settings, Eye, History, X
 } from 'lucide-react';
 
-import { calcExpiration } from './utils/kpi';
+import { calcExpiration, diffJours } from './utils/kpi';
 
 const FREQUENCES = ['Manuel uniquement', 'Hebdomadaire (lundi 8h)', 'Mensuel (1er du mois)'];
-
-const diffJ = ds => Math.ceil((new Date(ds) - new Date()) / 86400000);
 
 function loadConfig() {
   try {
@@ -55,20 +53,29 @@ export default function NotificationsEmail() {
       supabase.from('securite_accidents').select('id,type_evenement,date_evenement,description,lieu'),
     ]);
     const actions=r1.data||[], habs=r2.data||[], risques=r3.data||[], ncs=r4.data||[], acc=r5.data||[];
-    const actRetard  = actions.filter(a => !a.statut?.includes('Terminé')&&!a.statut?.includes('Annulé')&&a.echeance&&diffJ(a.echeance)<0);
-    const actImm     = actions.filter(a => !a.statut?.includes('Terminé')&&!a.statut?.includes('Annulé')&&a.echeance&&diffJ(a.echeance)>=0&&diffJ(a.echeance)<=7);
-    // calcExpiration retourne null si saisie incomplète → on early-return pour
-    // éviter `diffJ(null)` qui retomberait sur `new Date(null) = 1970` et
-    // enverrait des alertes "périmée" fantômes à des habilitations en réalité mal saisies.
+    const actRetard  = actions.filter(a => {
+      if (!a.echeance || a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return false;
+      const j = diffJours(a.echeance);
+      return j !== null && j < 0;
+    });
+    const actImm     = actions.filter(a => {
+      if (!a.echeance || a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return false;
+      const j = diffJours(a.echeance);
+      return j !== null && j >= 0 && j <= 7;
+    });
+    // calcExpiration retourne null si saisie incomplète → double null-guard (ceinture/bretelles)
+    // pour éviter toute alerte "périmée" fantôme sur habilitation mal saisie.
     const habPer     = habs.filter(h => {
       const exp = calcExpiration(h.obtention, h.validiteAns);
-      return exp !== null && diffJ(exp) < 0;
+      if (exp === null) return false;
+      const j = diffJours(exp);
+      return j !== null && j < 0;
     });
     const habBient   = habs.filter(h => {
       const exp = calcExpiration(h.obtention, h.validiteAns);
       if (exp === null) return false;
-      const j = diffJ(exp);
-      return j >= 0 && j <= 30;
+      const j = diffJours(exp);
+      return j !== null && j >= 0 && j <= 30;
     });
     const risqCrit   = risques.filter(r=>(r.criticite||1)>=9);
     const ncOuv      = ncs.filter(n=>n.statut_nc==='Ouverte'||!n.statut_nc);

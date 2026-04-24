@@ -666,11 +666,11 @@ export default function PlanActions() {
                           style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 8, padding: '5px 6px', fontSize: 11, fontWeight: 600, outline: 'none', cursor: 'pointer', width: '100%' }}>
                           {STATUTS.map(s => <option key={s}>{s}</option>)}
                         </select>
-                        {/* Budget résumé si renseigné */}
-                        {(row.cout_estime || row.cout_reel) && (
+                        {/* Budget résumé — convention ISO stricte : 0 € saisi est une donnée valide (affichée), null/undefined sont masqués */}
+                        {(row.cout_estime != null || row.cout_reel != null) && (
                           <div style={{ fontSize: 9, color: p.text4, marginTop: 3, display: 'flex', gap: 6 }}>
-                            {row.cout_estime && <span>Est.: {Number(row.cout_estime).toLocaleString('fr-FR')} €</span>}
-                            {row.cout_reel   && <span style={{ color: Number(row.cout_reel) > Number(row.cout_estime) ? '#EF4444' : '#10B981' }}>Réel: {Number(row.cout_reel).toLocaleString('fr-FR')} €</span>}
+                            {row.cout_estime != null && <span>Est.: {Number(row.cout_estime).toLocaleString('fr-FR')} €</span>}
+                            {row.cout_reel != null && <span style={{ color: row.cout_estime != null && Number(row.cout_reel) > Number(row.cout_estime) ? '#EF4444' : '#10B981' }}>Réel: {Number(row.cout_reel).toLocaleString('fr-FR')} €</span>}
                           </div>
                         )}
                       </td>

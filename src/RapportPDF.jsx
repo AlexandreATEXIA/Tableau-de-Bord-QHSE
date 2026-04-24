@@ -2,20 +2,26 @@ import { useTheme } from './ThemeContext';
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import { FileText, Download, Loader, CheckCircle, Settings, Building2, Calendar, FileDown } from 'lucide-react';
-import { safeMean, safeNumber, calcExpiration } from './utils/kpi';
+import { safeMean, safeNumber, calcExpiration, diffJours } from './utils/kpi';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const diffJ    = (ds) => Math.ceil((new Date(ds) - new Date()) / 86400000);
 // statHab : 'nd' si date d'obtention OU durée de validité non renseignée/invalide
 // → évite de classer à tort une habilitation en "périmée" sur saisie incomplète.
 const statHab  = (h) => {
   if (!h.obtention) return 'nd';
   const exp = calcExpiration(h.obtention, h.validiteAns);
   if (exp === null) return 'nd';
-  const j = diffJ(exp);
+  const j = diffJours(exp);
+  if (j === null) return 'nd';
   return j < 0 ? 'perime' : j <= 30 ? 'bientot' : 'valide';
 };
-const statAct  = (a) => { if (!a.echeance || a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return 'ok'; const j = diffJ(a.echeance); return j < 0 ? 'retard' : j <= 7 ? 'imminent' : 'ok'; };
+// statAct : null-guard explicite sur diffJours (date invalide) pour éviter toute coercion en 'retard'.
+const statAct = (a) => {
+  if (!a.echeance || a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return 'ok';
+  const j = diffJours(a.echeance);
+  if (j === null) return 'ok';
+  return j < 0 ? 'retard' : j <= 7 ? 'imminent' : 'ok';
+};
 
 // ─── Générateur HTML ──────────────────────────────────────────────────────────
 function buildHTML(data, opts, cfg) {
