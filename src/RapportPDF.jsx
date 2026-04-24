@@ -2,12 +2,19 @@ import { useTheme } from './ThemeContext';
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import { FileText, Download, Loader, CheckCircle, Settings, Building2, Calendar, FileDown } from 'lucide-react';
-import { safeMean, safeNumber } from './utils/kpi';
+import { safeMean, safeNumber, calcExpiration } from './utils/kpi';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const diffJ    = (ds) => Math.ceil((new Date(ds) - new Date()) / 86400000);
-const calcExp  = (obt, val) => { const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d; };
-const statHab  = (h) => { if (!h.obtention) return 'nd'; const j = diffJ(calcExp(h.obtention, h.validiteAns)); return j < 0 ? 'perime' : j <= 30 ? 'bientot' : 'valide'; };
+// statHab : 'nd' si date d'obtention OU durée de validité non renseignée/invalide
+// → évite de classer à tort une habilitation en "périmée" sur saisie incomplète.
+const statHab  = (h) => {
+  if (!h.obtention) return 'nd';
+  const exp = calcExpiration(h.obtention, h.validiteAns);
+  if (exp === null) return 'nd';
+  const j = diffJ(exp);
+  return j < 0 ? 'perime' : j <= 30 ? 'bientot' : 'valide';
+};
 const statAct  = (a) => { if (!a.echeance || a.statut?.includes('Terminé') || a.statut?.includes('Annulé')) return 'ok'; const j = diffJ(a.echeance); return j < 0 ? 'retard' : j <= 7 ? 'imminent' : 'ok'; };
 
 // ─── Générateur HTML ──────────────────────────────────────────────────────────

@@ -6,11 +6,10 @@ import {
   Loader, Plus, Trash2, Settings, Eye, History, X
 } from 'lucide-react';
 
+import { calcExpiration } from './utils/kpi';
+
 const FREQUENCES = ['Manuel uniquement', 'Hebdomadaire (lundi 8h)', 'Mensuel (1er du mois)'];
 
-function calcExp(obt, val) {
-  const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
-}
 const diffJ = ds => Math.ceil((new Date(ds) - new Date()) / 86400000);
 
 function loadConfig() {
@@ -58,8 +57,19 @@ export default function NotificationsEmail() {
     const actions=r1.data||[], habs=r2.data||[], risques=r3.data||[], ncs=r4.data||[], acc=r5.data||[];
     const actRetard  = actions.filter(a => !a.statut?.includes('Terminé')&&!a.statut?.includes('Annulé')&&a.echeance&&diffJ(a.echeance)<0);
     const actImm     = actions.filter(a => !a.statut?.includes('Terminé')&&!a.statut?.includes('Annulé')&&a.echeance&&diffJ(a.echeance)>=0&&diffJ(a.echeance)<=7);
-    const habPer     = habs.filter(h => h.obtention && diffJ(calcExp(h.obtention,h.validiteAns))<0);
-    const habBient   = habs.filter(h => { if(!h.obtention)return false; const j=diffJ(calcExp(h.obtention,h.validiteAns)); return j>=0&&j<=30; });
+    // calcExpiration retourne null si saisie incomplète → on early-return pour
+    // éviter `diffJ(null)` qui retomberait sur `new Date(null) = 1970` et
+    // enverrait des alertes "périmée" fantômes à des habilitations en réalité mal saisies.
+    const habPer     = habs.filter(h => {
+      const exp = calcExpiration(h.obtention, h.validiteAns);
+      return exp !== null && diffJ(exp) < 0;
+    });
+    const habBient   = habs.filter(h => {
+      const exp = calcExpiration(h.obtention, h.validiteAns);
+      if (exp === null) return false;
+      const j = diffJ(exp);
+      return j >= 0 && j <= 30;
+    });
     const risqCrit   = risques.filter(r=>(r.criticite||1)>=9);
     const ncOuv      = ncs.filter(n=>n.statut_nc==='Ouverte'||!n.statut_nc);
     const accArret   = acc.filter(a=>a.type_evenement==='Accident avec arrêt');

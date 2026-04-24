@@ -80,6 +80,40 @@ export function diffJours(dateCible, dateRef = new Date()) {
 }
 
 /**
+ * Calcule la date d'expiration d'une habilitation = dateObtention + N années.
+ * Source unique pour remplacer les 7 implémentations divergentes de `calcExp`
+ * dans l'application.
+ *
+ * Retourne `null` si :
+ *   • dateObtention est null/undefined/"" ou non parsable → protège contre
+ *     `new Date(null)` qui donnait 01/01/1970 et classait l'habilitation
+ *     comme "périmée" par défaut (faux positif classique).
+ *   • validiteAnnees n'est pas un nombre fini → protège contre
+ *     `Number(null) = 0` qui faisait expirer l'habilitation le jour même
+ *     de son obtention (bug silencieux très grave).
+ *   • la date d'expiration calculée est elle-même invalide (valeurs absurdes).
+ *
+ * ATTENTION UI : null peut se coercer en 0 dans une comparaison `<= new Date()`
+ * (0 <= timestamp = true). Les appelants DOIVENT tester explicitement
+ * `exp !== null` avant toute comparaison — ne jamais faire
+ * `calcExpiration(...) <= now` directement.
+ *
+ * Pattern correct :
+ *   const exp = calcExpiration(h.obtention, h.validiteAns);
+ *   const perimee = exp !== null && exp <= new Date();
+ */
+export function calcExpiration(dateObtention, validiteAnnees) {
+  const debut = safeDate(dateObtention);
+  if (!debut) return null;
+  const n = safeNumber(validiteAnnees, NaN);
+  if (!Number.isFinite(n)) return null;
+  // Copie défensive pour ne jamais muter la Date source si elle est réutilisée.
+  const exp = new Date(debut.getTime());
+  exp.setFullYear(exp.getFullYear() + n);
+  return Number.isFinite(exp.getTime()) ? exp : null;
+}
+
+/**
  * Moyenne défensive : ignore les valeurs non finies et refuse les tableaux vides.
  *
  * @param arr    tableau d'éléments

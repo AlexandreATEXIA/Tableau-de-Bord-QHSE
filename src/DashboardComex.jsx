@@ -12,11 +12,7 @@ import {
 import { useConfig } from './ConfigContext';
 import { Settings, X } from 'lucide-react';
 import AgendaSemaine from './AgendaSemaine';
-import { safeMean, safeNumber } from './utils/kpi';
-
-function calcExp(obt, val) {
-  const d = new Date(obt); d.setFullYear(d.getFullYear() + Number(val)); return d;
-}
+import { safeMean, safeNumber, calcExpiration } from './utils/kpi';
 
 export default function DashboardComex({ onNavigate }) {
   const { p, isDark } = useTheme();
@@ -62,8 +58,19 @@ export default function DashboardComex({ onNavigate }) {
     const actTerminees= actions.filter(a => a.statut?.includes('Terminé'));
     const tauxPDCA    = actions.length>0 ? Math.round((actTerminees.length/actions.length)*100) : 0;
 
-    const habsPerimees= habs.filter(h => h.obtention && calcExp(h.obtention,h.validiteAns)<=now);
-    const habsBientot = habs.filter(h => { if(!h.obtention)return false; const j=Math.ceil((calcExp(h.obtention,h.validiteAns)-now)/86400000); return j>=0&&j<=30; });
+    // calcExpiration retourne null si obtention/validiteAns invalides.
+    // On teste `exp !== null` explicitement car `null <= Date` vaut `true` en JS
+    // (coercition null→0), ce qui classerait toutes les lignes invalides comme périmées.
+    const habsPerimees= habs.filter(h => {
+      const exp = calcExpiration(h.obtention, h.validiteAns);
+      return exp !== null && exp <= now;
+    });
+    const habsBientot = habs.filter(h => {
+      const exp = calcExpiration(h.obtention, h.validiteAns);
+      if (exp === null) return false;
+      const j = Math.ceil((exp.getTime() - now.getTime()) / 86400000);
+      return j >= 0 && j <= 30;
+    });
 
     const risquesCrit = risques.filter(r=>(r.criticite||1)>=9);
     const ncOuvertes  = ncs.filter(n=>n.statut_nc==='Ouverte'||!n.statut_nc);
