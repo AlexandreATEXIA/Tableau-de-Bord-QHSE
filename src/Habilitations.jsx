@@ -5,6 +5,7 @@ import { supabase } from './supabaseClient';
 import { InputEmploye } from './EmployesContext';
 import GestionListes from './GestionListes';
 import { calcExpiration, diffJours } from './utils/kpi';
+import { logAction } from './auditLog';
 
 const LISTE_HABILITATIONS_DEFAULT = [
   'SST (Sauveteur Secouriste du Travail)', 'ATEX - NV0', 'ATEX - NV1', 'ATEX - NV2',
@@ -68,6 +69,7 @@ export default function Habilitations() {
     if (!row) return;
     setSaving(row.id);
     await supabase.from('habilitations').update(row).eq('id', row.id);
+    try { await logAction('habilitations', row.id, 'UPDATE', { employe: row.employe, domaine: row.domaine }); } catch {}
     setSaving(null);
   };
 
@@ -75,6 +77,7 @@ export default function Habilitations() {
     if (!form.employe.trim()) return;
     const { data } = await supabase.from('habilitations').insert([form]).select();
     if (data) {
+      try { await logAction('habilitations', data[0]?.id, 'CREATE', { employe: form.employe, domaine: form.domaine }); } catch {}
       setHabs(prev => [...prev, data[0]].sort((a,b) => (a.employe||'').localeCompare(b.employe||'')));
       setShowForm(false);
     }
@@ -82,6 +85,7 @@ export default function Habilitations() {
 
   const deleteRow = async (id) => {
     await supabase.from('habilitations').delete().eq('id', id);
+    try { await logAction('habilitations', id, 'DELETE', {}); } catch {}
     setHabs(prev => prev.filter(r => r.id !== id));
   };
 

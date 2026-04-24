@@ -1,0 +1,57 @@
+# =====================================================================
+# .gitattributes — Normalisation des fins de ligne (Lot EOL)
+# Date : 2026-04-24
+#
+# Contexte :
+#   Le dépôt est édité depuis Windows (VS Code + Vite). Sans
+#   normalisation, les fichiers re-sauvés passent en CRLF et polluent
+#   l'historique git (fichiers apparaissant 100% réécrits).
+#
+# Règle globale : tous les fichiers texte sont stockés en LF dans git
+# et restitués en LF dans le working tree (eol=lf), y compris sur Windows.
+# =====================================================================
+
+# Par défaut : auto-détection texte, stockage LF
+* text=auto eol=lf
+
+# -------------------------------------------------------------
+# Sources et configuration — LF strict
+# -------------------------------------------------------------
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.css       text eol=lf
+*.scss      text eol=lf
+*.html      text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.sql       text eol=lf
+*.sh        text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+
+# Fichiers spécifiques Windows qui ont besoin de CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# -------------------------------------------------------------
+# Binaires — pas de normalisation
+# -------------------------------------------------------------
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.xlsx      binary
+*.xls       binary
+*.docx      binary
+*.pptx      binary
+*.zip       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.eot       binary

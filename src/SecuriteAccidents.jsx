@@ -6,6 +6,7 @@ import GestionListes from './GestionListes';
 import { useToast } from './Toast';
 import { useConfig } from './ConfigContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { logAction } from './auditLog';
 
 const TYPES_EVT_DEFAULT = ["Presqu'accident", "Soins (sans arrêt)", "Accident avec arrêt", "Maladie Professionnelle", "Incident matériel"];
 const STATUTS   = ["À lancer", "En cours d'analyse", "Actions définies", "Clôturée"];
@@ -65,6 +66,7 @@ export default function SecuriteAccidents() {
   const sauvegarderLigne = async (row) => {
     setSaving(row.id);
     await supabase.from('securite_accidents').update(row).eq('id', row.id);
+    try { await logAction('securite_accidents', row.id, 'UPDATE', { type: row.type_evenement, statut: row.statut_enquete }); } catch {}
     setSaving(null);
   };
 
@@ -80,6 +82,7 @@ export default function SecuriteAccidents() {
       return;
     }
     if (data) {
+      try { await logAction('securite_accidents', data[0]?.id, 'CREATE', { type: payload.type_evenement, date: payload.date_evenement, lieu: payload.lieu }); } catch {}
       setAccidents([data[0], ...accidents]);
       setShowForm(false);
       setForm({ date_evenement: new Date().toISOString().split('T')[0], type_evenement: "Presqu'accident", lieu: 'Atelier', description: '', cause_immediate: [], victime: '', temoin: '', jours_perdus: 0, statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '' });
@@ -89,6 +92,7 @@ export default function SecuriteAccidents() {
 
   const deleteRow = async (id) => {
     await supabase.from('securite_accidents').delete().eq('id', id);
+    try { await logAction('securite_accidents', id, 'DELETE', {}); } catch {}
     setAccidents(accidents.filter(a => a.id !== id));
     toast({ message: 'Événement supprimé définitivement', type: 'info' });
   };
@@ -97,11 +101,13 @@ export default function SecuriteAccidents() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('securite_accidents').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
+    try { await logAction('securite_accidents', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
     setAccidents(prev => prev.map(a => a.id === id ? { ...a, archived_at: now } : a));
     toast({ message: 'Événement archivé', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('securite_accidents').update({ archived_at: null, archived_by: null }).eq('id', id);
+    try { await logAction('securite_accidents', id, 'RESTORE', {}); } catch {}
     setAccidents(prev => prev.map(a => a.id === id ? { ...a, archived_at: null } : a));
     toast({ message: 'Événement restauré', type: 'success' });
   };

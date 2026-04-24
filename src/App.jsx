@@ -5,7 +5,7 @@ import {
   FileText, HeartPulse, FileDown, Mail, BarChart2,
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
   PieChart, ClipboardList, Menu, X, LogOut, Archive,
-  Truck, ScrollText, Settings, Search, CalendarCheck
+  Truck, ScrollText, Settings, Search, CalendarCheck, ShieldCheck
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
@@ -36,6 +36,7 @@ import JournalAudit          from './JournalAudit';
 import Parametres            from './Parametres';
 import RechercheGlobale      from './RechercheGlobale';
 import ReunionsQHSE          from './ReunionsQHSE';
+import RGPDModule            from './RGPDModule';
 
 const MENU = [
   {
@@ -65,6 +66,7 @@ const MENU = [
       { id:'rapport',       label:'Export PDF',         icon:FileDown,        badge:'PDF', badgeClass:'blue' },
       { id:'archives',      label:'Archives & Export',  icon:Archive,         badge:'XLS', badgeClass:'green' },
       { id:'journal',       label:"Journal d'audit",    icon:ScrollText },
+      { id:'rgpd',          label:'Conformité RGPD',    icon:ShieldCheck,     badge:'NEW', badgeClass:'purple' },
       { id:'recherche',     label:'Recherche globale',  icon:Search },
       { id:'parametres',    label:'Paramètres',         icon:Settings },
       { id:'notifications', label:'Alertes Email',      icon:Mail },
@@ -296,6 +298,7 @@ export default function App() {
             {activeTab === 'parametres'    && <Parametres />}
             {activeTab === 'recherche'     && <RechercheGlobale />}
             {activeTab === 'reunions'      && <ReunionsQHSE />}
+            {activeTab === 'rgpd'          && <RGPDModule />}
             {activeTab === 'notifications' && <NotificationsEmail />}
           </div>
         </main>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, HeartPulse, FileText, HardHat, ShieldAlert, CheckCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { logAction } from './auditLog';
 
 const ACTIONS = [
   { id: 'incident', icon: HeartPulse, label: 'Déclarer un incident', color: '#EF4444' },
@@ -22,11 +23,12 @@ function ModalIncident({ onClose }) {
   const submit = async () => {
     if (!form.description.trim()) return;
     setSaving(true);
-    await supabase.from('securite_accidents').insert([{
+    const { data } = await supabase.from('securite_accidents').insert([{
       ...form,
       cause_immediate: '', victime: '', temoin: '', jours_perdus: 0,
       statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '',
-    }]);
+    }]).select();
+    try { await logAction('securite_accidents', data?.[0]?.id, 'CREATE', { source: 'QuickAction', type: form.type_evenement, lieu: form.lieu }); } catch {}
     setSaving(false);
     setDone(true);
     setTimeout(onClose, 1500);
@@ -77,9 +79,10 @@ function ModalAction({ onClose }) {
   const submit = async () => {
     if (!form.action.trim()) return;
     setSaving(true);
-    await supabase.from('plan_actions').insert([{
+    const { data } = await supabase.from('plan_actions').insert([{
       ...form, avancement_pct: 0, cause_racine: '', commentaire: '', cout_estime: '',
-    }]);
+    }]).select();
+    try { await logAction('plan_actions', data?.[0]?.id, 'CREATE', { source: 'QuickAction', action: form.action, pilote: form.pilote }); } catch {}
     setSaving(false);
     setDone(true);
     setTimeout(onClose, 1500);
@@ -139,7 +142,8 @@ function ModalRisque({ onClose }) {
     if (!form.danger.trim()) return;
     setSaving(true);
     const ci = form.gravite * form.probabilite;
-    await supabase.from('registre_duerp').insert([{ ...form, criticite: ci, criticite_resid: ci, action_preventive: '', pilote: '', date_maj: new Date().toISOString().split('T')[0] }]);
+    const { data } = await supabase.from('registre_duerp').insert([{ ...form, criticite: ci, criticite_resid: ci, action_preventive: '', pilote: '', date_maj: new Date().toISOString().split('T')[0] }]).select();
+    try { await logAction('registre_duerp', data?.[0]?.id, 'CREATE', { source: 'QuickAction', danger: form.danger, criticite: ci }); } catch {}
     setSaving(false);
     setDone(true);
     setTimeout(onClose, 1500);

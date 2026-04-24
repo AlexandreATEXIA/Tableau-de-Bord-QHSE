@@ -4,6 +4,7 @@ import { Plus, Trash2, AlertOctagon, RefreshCw, Shield, Filter, X, Save, Grid, A
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
+import { logAction } from './auditLog';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
 const FAMILLES_RISQUES = [
@@ -130,11 +131,13 @@ export default function RegistreDUERP() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('registre_duerp').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
+    try { await logAction('registre_duerp', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
     setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: now } : r));
     toast({ message: 'Risque archivé dans l\'historique', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('registre_duerp').update({ archived_at: null, archived_by: null }).eq('id', id);
+    try { await logAction('registre_duerp', id, 'RESTORE', {}); } catch {}
     setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: null } : r));
     toast({ message: 'Risque restauré', type: 'success' });
   };
@@ -180,7 +183,10 @@ export default function RegistreDUERP() {
     }).eq('id', rowData.id);
     setSaving(null);
     if (error) toast({ message: `Erreur sauvegarde : ${error.message}`, type: 'error' });
-    else toast({ message: 'Risque sauvegardé', type: 'success' });
+    else {
+      try { await logAction('registre_duerp', rowData.id, 'UPDATE', { unite: rowData.unite_travail, criticite_resid: rowData.criticite_resid }); } catch {}
+      toast({ message: 'Risque sauvegardé', type: 'success' });
+    }
   };
 
   // Appelé par onBlur des champs texte (lit le state le plus récent via ref)
@@ -234,6 +240,7 @@ export default function RegistreDUERP() {
       return;
     }
     if (data?.[0]) {
+      try { await logAction('registre_duerp', data[0].id, 'CREATE', { unite: form.unite_travail, famille: form.famille_risque, danger: form.danger, criticite_resid: cr }); } catch {}
       setRisques(prev => [...prev, data[0]].sort((a, b) => (b.criticite_resid || b.criticite || 1) - (a.criticite_resid || a.criticite || 1)));
       setShowForm(false);
       setForm({ ...FORM_INIT, unite_travail: listeUT[0] });
@@ -245,6 +252,7 @@ export default function RegistreDUERP() {
   const deleteRow = async (id) => {
     if (!window.confirm('Supprimer ce risque définitivement ?')) return;
     await supabase.from('registre_duerp').delete().eq('id', id);
+    try { await logAction('registre_duerp', id, 'DELETE', {}); } catch {}
     setRisques(prev => prev.filter(r => r.id !== id));
     toast({ message: 'Risque supprimé', type: 'info' });
   };

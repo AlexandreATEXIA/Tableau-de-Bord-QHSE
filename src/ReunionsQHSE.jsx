@@ -3,6 +3,7 @@ import { useTheme } from './ThemeContext';
 import { useToast } from './ToastContext';
 import { supabase } from './supabaseClient';
 import ConfirmModal from './ConfirmModal';
+import { logAction } from './auditLog';
 import {
   Plus, Trash2, RefreshCw, Save, X, MessageSquare, Users, Calendar,
   FileText, ChevronDown, ChevronRight, CheckCircle, AlertTriangle,
@@ -80,6 +81,7 @@ export default function ReunionsQHSE() {
       .select();
     if (error) { toast.error('Erreur : ' + error.message); return; }
     if (data) {
+      try { await logAction('reunions_qhse', data[0]?.id, 'CREATE', { type: form.type, date: form.date }); } catch {}
       setReunions(prev => [data[0], ...prev]);
       setActionsReu(prev => ({ ...prev, [data[0].id]: [] }));
       setShowForm(false);
@@ -94,7 +96,10 @@ export default function ReunionsQHSE() {
     const { id, ...data } = row;
     const { error } = await supabase.from('reunions_qhse').update(data).eq('id', id);
     if (error) toast.error('Erreur sauvegarde : ' + error.message);
-    else toast.success('Réunion enregistrée');
+    else {
+      try { await logAction('reunions_qhse', id, 'UPDATE', { type: row.type, statut: row.statut }); } catch {}
+      toast.success('Réunion enregistrée');
+    }
     setSaving(null);
   };
 
@@ -110,6 +115,7 @@ export default function ReunionsQHSE() {
       onConfirm: async () => {
         const { error } = await supabase.from('reunions_qhse').delete().eq('id', id);
         if (error) { toast.error('Erreur : ' + error.message); return; }
+        try { await logAction('reunions_qhse', id, 'DELETE', { label }); } catch {}
         setReunions(prev => prev.filter(r => r.id !== id));
         toast.success('Réunion supprimée');
       },
@@ -163,6 +169,7 @@ export default function ReunionsQHSE() {
 
     const { error } = await supabase.from('plan_actions').insert(toInsert);
     if (error) { toast.error('Erreur envoi PDCA : ' + error.message); return; }
+    try { await logAction('plan_actions', reunionId, 'CREATE', { source: 'reunion', count: actions.length, reunion_type: reunion.type, reunion_date: reunion.date }); } catch {}
     toast.success(`${actions.length} action(s) envoyée(s) au Plan d'Actions`);
   };
 

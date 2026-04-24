@@ -5,6 +5,7 @@ import { supabase } from './supabaseClient';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import GestionListes from './GestionListes';
 import { safeMean } from './utils/kpi';
+import { logAction } from './auditLog';
 
 /* ─── Listes par défaut ──────────────────────────────────────────────────── */
 const DEF_PROCESSUS   = ['Direction','RH','QHSE','Achats','Commercial','Production','Maintenance','IT','Logistique'];
@@ -82,19 +83,31 @@ export default function QualiteAudits() {
   /* ── Sauvegarde auto ligne ── */
   const saveAudit = async (row) => {
     const { id, ...data } = row;
-    if (id) await supabase.from('qualite_audits').update(data).eq('id', id);
+    if (id) {
+      await supabase.from('qualite_audits').update(data).eq('id', id);
+      try { await logAction('qualite_audits', id, 'UPDATE', { titre: data.titre, statut: data.statut }); } catch {}
+    }
   };
   const saveNC = async (row) => {
     const { id, ...data } = row;
-    if (id) await supabase.from('qualite_nc').update(data).eq('id', id);
+    if (id) {
+      await supabase.from('qualite_nc').update(data).eq('id', id);
+      try { await logAction('qualite_nc', id, 'UPDATE', { type: data.type_nc, statut: data.statut_nc }); } catch {}
+    }
   };
   const saveSat = async (row) => {
     const { id, ...data } = row;
-    if (id) await supabase.from('qualite_satisfaction').update(data).eq('id', id);
+    if (id) {
+      await supabase.from('qualite_satisfaction').update(data).eq('id', id);
+      try { await logAction('qualite_satisfaction', id, 'UPDATE', { client: data.client, note: data.note_globale }); } catch {}
+    }
   };
   const saveQvt = async (row) => {
     const { id, ...data } = row;
-    if (id) await supabase.from('qualite_qvt').update(data).eq('id', id);
+    if (id) {
+      await supabase.from('qualite_qvt').update(data).eq('id', id);
+      try { await logAction('qualite_qvt', id, 'UPDATE', { campagne: data.nom_campagne, note: data.note_moyenne }); } catch {}
+    }
   };
 
   /* ── Mise à jour locale + save ── */
@@ -109,7 +122,10 @@ export default function QualiteAudits() {
       titre:'Nouvel audit', type_audit: listeTypesAudit[0], processus: listeProcessus[0],
       auditeur:'', date: new Date().toISOString().slice(0,10), statut:'Planifié', score:0
     }]).select();
-    if (data) loadAll();
+    if (data) {
+      try { await logAction('qualite_audits', data[0]?.id, 'CREATE', { type: listeTypesAudit[0], processus: listeProcessus[0] }); } catch {}
+      loadAll();
+    }
   };
   const addNC = async () => {
     const { data } = await supabase.from('qualite_nc').insert([{
@@ -117,25 +133,35 @@ export default function QualiteAudits() {
       origine: listeOrigines[0], type_nc: listeTypesNC[0],
       description:'', statut_nc:'Ouverte', action_corrective:''
     }]).select();
-    if (data) loadAll();
+    if (data) {
+      try { await logAction('qualite_nc', data[0]?.id, 'CREATE', { processus: listeProcessus[0], type: listeTypesNC[0] }); } catch {}
+      loadAll();
+    }
   };
   const addSat = async () => {
     const { data } = await supabase.from('qualite_satisfaction').insert([{
       date_enquete: new Date().toISOString().slice(0,10), client:'', projet:'', note_globale:8, commentaire:''
     }]).select();
-    if (data) loadAll();
+    if (data) {
+      try { await logAction('qualite_satisfaction', data[0]?.id, 'CREATE', {}); } catch {}
+      loadAll();
+    }
   };
   const addQvt = async () => {
     const { data } = await supabase.from('qualite_qvt').insert([{
       date_campagne: new Date().toISOString().slice(0,10), nom_campagne:'Sondage QVT',
       effectif_total:10, reponses:0, note_moyenne:5
     }]).select();
-    if (data) loadAll();
+    if (data) {
+      try { await logAction('qualite_qvt', data[0]?.id, 'CREATE', { campagne: 'Sondage QVT' }); } catch {}
+      loadAll();
+    }
   };
 
   const deleteRow = async (table, id) => {
     if (!confirm('Supprimer cette ligne ?')) return;
     await supabase.from(table).delete().eq('id', id);
+    try { await logAction(table, id, 'DELETE', {}); } catch {}
     loadAll();
   };
 

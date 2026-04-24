@@ -7,6 +7,8 @@ import {
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
+import { logAction } from './auditLog';
+import { diffJours } from './utils/kpi';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
 const ORIGINES = [
@@ -69,10 +71,8 @@ function getPrioriteColor(priorite) {
 }
 
 /* ─── Utilitaires date ──────────────────────────────────────────────────────── */
-function diffJours(date) {
-  if (!date) return null;
-  return Math.ceil((new Date(date) - new Date()) / 86400000);
-}
+// diffJours est importé depuis utils/kpi — source unique, null-guard natif
+// sur dates invalides (évite la coercion `null <= N` qui renverrait `true`).
 
 function BadgeEcheance({ echeance, statut }) {
   if (!echeance || statut === 'Terminé' || statut === 'Annulé') return null;
@@ -161,11 +161,13 @@ export default function PlanActions() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('plan_actions').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
+    try { await logAction('plan_actions', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
     setActions(prev => prev.map(a => a.id === id ? { ...a, archived_at: now } : a));
     toast({ message: 'Action archivée', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('plan_actions').update({ archived_at: null, archived_by: null }).eq('id', id);
+    try { await logAction('plan_actions', id, 'RESTORE', {}); } catch {}
     setActions(prev => prev.map(a => a.id === id ? { ...a, archived_at: null } : a));
     toast({ message: 'Action restaurée', type: 'success' });
   };
@@ -192,6 +194,7 @@ export default function PlanActions() {
       resultat_efficacite: row.resultat_efficacite,
       commentaire: row.commentaire,
     }).eq('id', row.id);
+    try { await logAction('plan_actions', row.id, 'UPDATE', { statut: row.statut, avancement: Number(row.avancement_pct || 0), pilote: row.pilote }); } catch {}
     setSaving(null);
   };
 
@@ -234,6 +237,7 @@ export default function PlanActions() {
       return;
     }
     if (data?.[0]) {
+      try { await logAction('plan_actions', data[0].id, 'CREATE', { origine: form.origine, domaine: form.domaine, action: form.action, pilote: form.pilote }); } catch {}
       setActions(prev => [...prev, data[0]]);
       setShowForm(false);
       setForm(mkForm(listeDomaines, ORIGINES));
@@ -245,6 +249,7 @@ export default function PlanActions() {
   const deleteRow = async (id) => {
     if (!window.confirm('Supprimer cette action ?')) return;
     await supabase.from('plan_actions').delete().eq('id', id);
+    try { await logAction('plan_actions', id, 'DELETE', {}); } catch {}
     setActions(prev => prev.filter(r => r.id !== id));
     toast({ message: 'Action supprimée', type: 'info' });
   };
