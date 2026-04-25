@@ -12,7 +12,7 @@ import LoginPage from './LoginPage';
 import QuickActions from './QuickActions';
 import { useAlerteCounts } from './useAlerteCounts';
 import GestionUtilisateurs from './GestionUtilisateurs';
-import { useUser } from './UserContext';
+import { useUser, ROLES } from './UserContext';
 
 import DashboardComex        from './DashboardComex';
 import RegistreDUERP         from './RegistreDUERP';
@@ -76,7 +76,7 @@ const MENU = [
 
 export default function App() {
   const { theme } = useTheme();
-  const { role, canAccess } = useUser();
+  const { role, canAccess, loading: userLoading, logout, displayName } = useUser();
   const [activeTab, setActiveTab]     = useState('comex');
   const [animKey, setAnimKey]         = useState(0);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
@@ -101,12 +101,35 @@ export default function App() {
   // ⚠️ Les hooks DOIVENT être appelés avant tout early return
   const { counts } = useAlerteCounts();
 
-  if (session === undefined) return (
+  if (session === undefined || (session && userLoading)) return (
     <div style={{ height:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0B1120' }}>
       <div style={{ width:40, height:40, border:'3px solid rgba(79,99,231,0.3)', borderTopColor:'#4F63E7', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
     </div>
   );
   if (!session) return <LoginPage />;
+
+  // Compte authentifié mais sans rôle attribué dans user_roles : impossible de
+  // savoir ce qu'il a le droit de faire — on bloque avec un message explicite
+  // plutôt que de l'envoyer sur une sidebar vide. Cas typique : compte créé
+  // dans Supabase Dashboard mais l'admin n'a pas encore inséré le rôle.
+  if (!role) return (
+    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#050c18 0%,#0b1120 50%,#080f1e 100%)', padding:20 }}>
+      <div style={{ width:'100%', maxWidth:420, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:18, padding:'34px 32px', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.5)' }}>
+        <div style={{ fontSize:38, marginBottom:14 }}>🔒</div>
+        <h1 style={{ fontSize:18, fontWeight:800, color:'#FCD34D', marginBottom:8 }}>Compte non configuré</h1>
+        <p style={{ fontSize:13, color:'#94A3B8', lineHeight:1.6, marginBottom:18 }}>
+          Bonjour <strong style={{ color:'#E2E8F0' }}>{displayName}</strong>, votre compte est bien authentifié mais aucun rôle ne vous a encore été attribué. Contactez l'administrateur QHSE pour qu'il vous donne accès aux modules.
+        </p>
+        <p style={{ fontSize:11, color:'#475569', marginBottom:20, fontFamily:'monospace' }}>
+          {session.user.email}
+        </p>
+        <button onClick={logout}
+          style={{ padding:'10px 22px', borderRadius:10, border:'none', background:'rgba(239,68,68,0.15)', color:'#FCA5A5', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+          <LogOut size={14}/> Déconnexion
+        </button>
+      </div>
+    </div>
+  );
 
   const handleTab = (id) => {
     if (id === activeTab) return;
@@ -226,7 +249,9 @@ export default function App() {
             <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {session?.user?.email?.split('@')[0] || 'Yoann'}
             </div>
-            <div style={{ fontSize:11, color:'var(--text-3)' }}>Responsable QHSE</div>
+            <div style={{ fontSize:11, color: ROLES[role]?.color || 'var(--text-3)', fontWeight: 600 }}>
+              {ROLES[role]?.label || 'Sans rôle'}
+            </div>
           </div>
           <ThemeToggleBtn/>
           {estAdmin && (

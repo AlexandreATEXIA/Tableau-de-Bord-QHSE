@@ -5,6 +5,7 @@ import { supabase } from './supabaseClient';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend } from 'recharts';
 import GestionListes from './GestionListes';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 // Identifiants de persistance des listes éditables — alignés sur la convention
 // utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
@@ -174,9 +175,9 @@ export default function Environnement() {
           <button onClick={fetchReleves} className="btn-secondary">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser
           </button>
-          <button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#10B981', boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}>
+          <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#10B981', boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}>
             <Plus size={16}/> Ajouter un relevé
-          </button>
+          </button></WriteOnly>
         </div>
       </header>
 

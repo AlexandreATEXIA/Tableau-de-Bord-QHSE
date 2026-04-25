@@ -7,6 +7,7 @@ import GestionListes from './GestionListes';
 import { safeMean } from './utils/kpi';
 import { logAction } from './auditLog';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 // Identifiants de persistance des listes éditables — alignés sur la convention
 // utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
@@ -294,7 +295,7 @@ export default function QualiteAudits() {
         <div className="glass-panel animate-fade-up-3" style={{ overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:`1px solid ${p.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div style={{ fontSize:14, fontWeight:700, color:p.text1 }}>📋 Liste des audits</div>
-            <button onClick={addAudit} className="btn-primary"><Plus size={14}/> Ajouter</button>
+            <WriteOnly><button onClick={addAudit} className="btn-primary"><Plus size={14}/> Ajouter</button></WriteOnly>
           </div>
           <div style={{ overflowX:'auto' }}>
             <table className="table-modern">
@@ -350,7 +351,7 @@ export default function QualiteAudits() {
         <div className="glass-panel animate-fade-up-3" style={{ overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:`1px solid ${p.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div style={{ fontSize:14, fontWeight:700, color:p.text1 }}>⚠️ Non-Conformités</div>
-            <button onClick={addNC} className="btn-primary"><Plus size={14}/> Ajouter</button>
+            <WriteOnly><button onClick={addNC} className="btn-primary"><Plus size={14}/> Ajouter</button></WriteOnly>
           </div>
           <div style={{ overflowX:'auto' }}>
             <table className="table-modern">
@@ -390,7 +391,7 @@ export default function QualiteAudits() {
         <div className="glass-panel animate-fade-up-3" style={{ overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:`1px solid ${p.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div style={{ fontSize:14, fontWeight:700, color:p.text1 }}>⭐ Satisfaction client</div>
-            <button onClick={addSat} className="btn-primary"><Plus size={14}/> Ajouter</button>
+            <WriteOnly><button onClick={addSat} className="btn-primary"><Plus size={14}/> Ajouter</button></WriteOnly>
           </div>
           <div style={{ overflowX:'auto' }}>
             <table className="table-modern">
@@ -437,7 +438,7 @@ export default function QualiteAudits() {
         <div className="glass-panel animate-fade-up-3" style={{ overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:`1px solid ${p.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div style={{ fontSize:14, fontWeight:700, color:p.text1 }}>😊 Qualité de Vie au Travail</div>
-            <button onClick={addQvt} className="btn-primary"><Plus size={14}/> Ajouter</button>
+            <WriteOnly><button onClick={addQvt} className="btn-primary"><Plus size={14}/> Ajouter</button></WriteOnly>
           </div>
           <div style={{ overflowX:'auto' }}>
             <table className="table-modern">

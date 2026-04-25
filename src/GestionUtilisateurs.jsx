@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
-import { UserPlus, X, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, X, CheckCircle, Eye, EyeOff, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useUser, ROLES } from './UserContext';
 
 export default function GestionUtilisateurs({ onClose }) {
@@ -8,7 +8,7 @@ export default function GestionUtilisateurs({ onClose }) {
   const [email, setEmail]     = useState('');
   const [nom, setNom]         = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole]       = useState('operateur'); // moindre privilège par défaut
+  const [role, setRole]       = useState('lecteur'); // moindre privilège par défaut (étape E)
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null); // { success, message }
@@ -28,21 +28,61 @@ export default function GestionUtilisateurs({ onClose }) {
     );
   }
 
+  // Étape E — Création d'un utilisateur sans Edge Function dédiée.
+  //
+  // Stratégie :
+  //   1. signUp(email, password) — crée l'entrée dans auth.users via la clé
+  //      anon. Supabase enverra un email de confirmation par défaut. Pour
+  //      éviter cette friction sur un usage interne, désactivez la
+  //      confirmation email dans Authentication → Providers → Email.
+  //   2. Insertion immédiate dans public.user_roles avec le rôle choisi.
+  //      Si l'étape 1 a réussi mais le user_id n'est pas encore disponible
+  //      (cas confirmation email obligatoire), on retombe sur une
+  //      résolution par email après un court délai.
+  //
+  // Cas d'usage : 2-3 comptes max par organisation. Pour des volumes plus
+  // importants, il faudra créer une Edge Function dédiée avec
+  // service_role pour bypasser la confirmation email.
   const inviter = async (e) => {
     e.preventDefault();
     setLoading(true);
     setResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('invite-user', {
-        body: { email, password, nom, role },
+      // 1. Création de l'utilisateur Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { nom },              // stocké dans user_metadata, utile pour displayName
+          emailRedirectTo: window.location.origin,
+        },
       });
-      if (error) throw error;
-      if (data?.success) {
-        setResult({ success: true, message: `Compte créé pour ${email} (rôle : ${ROLES[role]?.label || role})` });
-        setEmail(''); setNom(''); setPassword(''); setRole('operateur');
-      } else {
-        setResult({ success: false, message: data?.message || 'Erreur inconnue' });
+      if (signUpError) throw signUpError;
+
+      // 2. Récupérer l'user_id (peut être présent dans signUpData OU via lookup)
+      let userId = signUpData?.user?.id;
+      if (!userId) {
+        // Cas où la confirmation email est requise — l'user existe en base
+        // mais signUp ne renvoie pas l'id. On le retrouve via l'API Supabase.
+        // En l'absence d'accès admin côté client, on prévient l'admin.
+        setResult({
+          success: false,
+          message: `Compte créé pour ${email}, mais l'attribution du rôle nécessite que l'utilisateur clique sur le lien de confirmation reçu par email. Vous pourrez ensuite lui attribuer le rôle "${ROLES[role]?.label}" via Supabase Dashboard.`,
+        });
+        return;
       }
+
+      // 3. Insertion du rôle dans user_roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({ user_id: userId, role, email, nom }, { onConflict: 'user_id' });
+      if (roleError) throw roleError;
+
+      setResult({
+        success: true,
+        message: `Compte créé pour ${email} (rôle : ${ROLES[role]?.label || role})`,
+      });
+      setEmail(''); setNom(''); setPassword(''); setRole('lecteur');
     } catch (err) {
       setResult({ success: false, message: String(err?.message || err) });
     }
@@ -104,13 +144,14 @@ export default function GestionUtilisateurs({ onClose }) {
           <div>
             <label style={lbl}>Rôle *</label>
             <select value={role} onChange={e => setRole(e.target.value)} required style={inp}>
+              <option value="lecteur">Lecteur (consultation seule, voit tous les modules)</option>
               <option value="operateur">Opérateur (accès limité : Supervision, Accidents, Plan d'actions, Calendrier)</option>
               <option value="direction">Direction (pilotage : Supervision, Revue, Stats, Objectifs, KPI, Calendrier, Rapport)</option>
               <option value="responsable_qhse">Responsable QHSE (accès complet)</option>
               <option value="admin">Administrateur (accès complet + gestion utilisateurs)</option>
             </select>
             <p style={{ fontSize: 10.5, color: 'var(--text-4)', marginTop: 5, lineHeight: 1.4 }}>
-              Le rôle peut être modifié plus tard dans Supabase Dashboard → Authentication → Users → User Metadata.
+              Le rôle peut être modifié plus tard via SQL Supabase ou en relançant ce formulaire.
             </p>
           </div>
           {result && !result.success && (

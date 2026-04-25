@@ -7,6 +7,7 @@ import GestionListes from './GestionListes';
 import { calcExpiration, diffJours } from './utils/kpi';
 import { logAction } from './auditLog';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 // Identifiants de persistance des listes éditables — alignés sur la convention
 // utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
@@ -170,7 +171,7 @@ export default function Habilitations() {
             storageKey="habilitations"
           />
           <button onClick={fetchHabs} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Délivrer une habilitation</button>
+          <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Délivrer une habilitation</button></WriteOnly>
         </div>
       </header>
 

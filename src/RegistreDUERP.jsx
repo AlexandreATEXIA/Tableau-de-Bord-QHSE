@@ -6,6 +6,7 @@ import GestionListes from './GestionListes';
 import { useToast } from './Toast';
 import { logAction } from './auditLog';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
 // Clés de stockage pour les listes DUERP.
@@ -402,9 +403,9 @@ export default function RegistreDUERP() {
           />
           <button onClick={() => setShowMatrice(v => !v)} className="btn-secondary"><Grid size={16}/> Matrice</button>
           <button onClick={fetchRisques} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          {!showArchive && <button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#F59E0B', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
+          {!showArchive && <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#F59E0B', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
             <Plus size={16}/> Identifier un risque
-          </button>}
+          </button></WriteOnly>}
         </div>
       </header>
 

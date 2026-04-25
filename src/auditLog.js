@@ -27,18 +27,43 @@ function getLocal() {
 function saveLocal(entries) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(-MAX_LOCAL))); } catch {}
 }
-function getUserName() {
-  try { return JSON.parse(localStorage.getItem('qhse_profil') || '{}').prenom || 'Utilisateur'; } catch { return 'Utilisateur'; }
+// Étape E8 — Identité nominative dans l'audit log.
+// Ordre de priorité pour identifier l'utilisateur :
+//   1. session Supabase Auth → email réel (RGPD : traçabilité fiable)
+//   2. user_metadata.nom (fallback si email absent)
+//   3. localStorage qhse_profil.prenom (legacy, avant l'auth Supabase)
+//   4. 'Utilisateur' (cas extrême — ne devrait plus arriver post-E7)
+async function getUserIdentity() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const u = session.user;
+      return {
+        userName: u.email || u.user_metadata?.nom || u.user_metadata?.name || 'Utilisateur',
+        userId:   u.id,
+      };
+    }
+  } catch { /* session absente, fallback ci-dessous */ }
+  try {
+    const profil = JSON.parse(localStorage.getItem('qhse_profil') || '{}');
+    return { userName: profil.prenom || 'Utilisateur', userId: null };
+  } catch {
+    return { userName: 'Utilisateur', userId: null };
+  }
 }
 
 export async function logAction(tableName, recordId, action, details = {}, userName = '') {
+  const identity = userName ? { userName, userId: null } : await getUserIdentity();
+
   const entry = {
     id:         `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     table_name: tableName,
     record_id:  String(recordId || ''),
     action,
-    details,
-    user_name:  userName || getUserName(),
+    // On glisse user_id dans details pour le retrouver côté requête sans
+    // changer le schéma de la table (audit_log n'a pas de colonne user_id).
+    details:    { ...details, user_id: identity.userId },
+    user_name:  identity.userName,
     created_at: new Date().toISOString(),
   };
 

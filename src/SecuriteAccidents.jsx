@@ -8,6 +8,7 @@ import { useConfig } from './ConfigContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { logAction } from './auditLog';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 // Identifiants de persistance des listes éditables — alignés sur la convention
 // utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
@@ -183,9 +184,9 @@ export default function SecuriteAccidents() {
           <button onClick={loadData} className="btn-secondary">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser
           </button>
-          <button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#EF4444', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }}>
+          <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary" style={{ background: '#EF4444', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }}>
             <Plus size={16}/> Déclarer un événement
-          </button>
+          </button></WriteOnly>
         </div>
       </header>
 

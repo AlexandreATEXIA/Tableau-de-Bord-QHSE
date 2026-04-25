@@ -11,6 +11,7 @@ import Habilitations from './Habilitations';
 import { useEmployes } from './EmployesContext';
 import { Upload } from 'lucide-react';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 // Identifiants de persistance des listes éditables — alignés sur la convention
 // utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
@@ -222,10 +223,10 @@ export default function SocialRH() {
                 {importLoading ? 'Import...' : 'Importer Excel'}
                 <input type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={e => { if(e.target.files[0]) importerExcelEmployes(e.target.files[0]); e.target.value=''; }}/>
               </label>
-              <button onClick={() => setShowFormEmp(true)} className="btn-primary"><Plus size={16}/> Ajouter un employé</button>
+              <WriteOnly><button onClick={() => setShowFormEmp(true)} className="btn-primary"><Plus size={16}/> Ajouter un employé</button></WriteOnly>
             </>
           )}
-          {subTab === 'formations' && <button onClick={() => setShowFormForm(true)} className="btn-primary" style={{ background:'#8B5CF6', boxShadow:'0 0 16px rgba(139,92,246,0.3)' }}><Plus size={16}/> Ajouter une formation</button>}
+          {subTab === 'formations' && <WriteOnly><button onClick={() => setShowFormForm(true)} className="btn-primary" style={{ background:'#8B5CF6', boxShadow:'0 0 16px rgba(139,92,246,0.3)' }}><Plus size={16}/> Ajouter une formation</button></WriteOnly>}
         </div>
       </header>
 

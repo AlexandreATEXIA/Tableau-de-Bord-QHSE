@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, Plus, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useUser } from './UserContext';
 
 export default function GestionListes({ listes, onSave, storageKey }) {
+  // ⚠️ Tous les hooks doivent être appelés AVANT tout early return — ne pas
+  // déplacer le `if (!canWrite) return null` plus haut, ça casserait les
+  // Rules of Hooks de React au prochain re-render.
+  const { canWrite } = useUser();
   const [open, setOpen]         = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [newValues, setNew]     = useState({});
@@ -57,6 +62,10 @@ export default function GestionListes({ listes, onSave, storageKey }) {
     [list[idx], list[to]] = [list[to], list[idx]];
     save(key, list);
   };
+
+  // Étape E — masquage complet pour les rôles en lecture seule.
+  // Placé ICI (après tous les hooks) pour respecter les Rules of Hooks.
+  if (!canWrite) return null;
 
   const modal = open ? createPortal(
     <div

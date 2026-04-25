@@ -10,6 +10,7 @@ import { useToast } from './Toast';
 import { logAction } from './auditLog';
 import { diffJours } from './utils/kpi';
 import { useListe } from './utils/useListe';
+import { WriteOnly } from './WriteGuard';
 
 // Identifiants de persistance des listes éditables — alignés sur la convention
 // utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
@@ -321,7 +322,7 @@ export default function PlanActions() {
             storageKey="plan_actions"
           />
           <button onClick={fetchActions} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          {!showArchive && <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouvelle action</button>}
+          {!showArchive && <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouvelle action</button></WriteOnly>}
         </div>
       </header>
 
