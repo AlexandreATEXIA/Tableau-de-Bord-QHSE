@@ -15,7 +15,27 @@ export function EmployesProvider({ children }) {
     if (data) setEmployes(data);
   };
 
-  useEffect(() => { chargerEmployes(); }, []);
+  // Étape E (post-RLS) : on attend la session Supabase avant le fetch
+  // pour ne pas se prendre un 401 au démarrage avant le login.
+  useEffect(() => {
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      chargerEmployes();
+    };
+
+    tick();
+
+    // Recharge dès qu'un utilisateur se connecte (utile sur first login)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session && !cancelled) chargerEmployes();
+    });
+
+    return () => { cancelled = true; subscription.unsubscribe(); };
+  }, []);
 
   // Noms complets pour les menus déroulants
   const nomsComplets = employes.map(e => `${e.nom}${e.prenom ? ' ' + e.prenom : ''}`).filter(Boolean);

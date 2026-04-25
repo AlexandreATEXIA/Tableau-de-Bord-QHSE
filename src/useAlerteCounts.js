@@ -50,10 +50,32 @@ export function useAlerteCounts() {
     });
   }, []);
 
+  // Étape E (post-RLS) : avant de lancer une requête Supabase, on vérifie
+  // qu'une session existe. Sans JWT, RLS bloque tout en 401 — ce qui
+  // arrivait au démarrage de l'app, AVANT que l'utilisateur se logue.
   useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 5 * 60 * 1000); // rafraîchit toutes les 5 min
-    return () => clearInterval(interval);
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      refresh();
+    };
+
+    tick(); // initial — silencieusement skippé si pas encore loggé
+    const interval = setInterval(tick, 5 * 60 * 1000);
+
+    // Réagit aux changements d'auth — refresh immédiat dès qu'on se logue
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session && !cancelled) refresh();
+    });
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      subscription.unsubscribe();
+    };
   }, [refresh]);
 
   return { counts, refresh };

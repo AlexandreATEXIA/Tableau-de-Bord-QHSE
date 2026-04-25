@@ -68,11 +68,30 @@ export function AlertesProvider({ children }) {
     } catch { /* silencieux — ne pas bloquer l'app */ }
   }, [anneeActive]);
 
+  // Étape E (post-RLS) : on attend qu'une session Supabase existe avant
+  // de lancer les requêtes — sinon RLS bloque en 401 au démarrage de l'app.
   useEffect(() => {
-    refresh();
-    // Rafraîchit toutes les 5 minutes automatiquement
-    const id = setInterval(refresh, 5 * 60 * 1000);
-    return () => clearInterval(id);
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      refresh();
+    };
+
+    tick();
+    const id = setInterval(tick, 5 * 60 * 1000);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session && !cancelled) refresh();
+    });
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      subscription.unsubscribe();
+    };
   }, [refresh]);
 
   return (
