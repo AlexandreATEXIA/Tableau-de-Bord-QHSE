@@ -8,13 +8,20 @@ export default function GestionListes({ listes, onSave, storageKey }) {
   const [newValues, setNew]     = useState({});
   const [local, setLocal]       = useState(listes);
 
+  // Étape B : la persistance (Supabase + cache local) est entièrement
+  // gérée par le hook useListe côté parent. Ce composant ne doit donc
+  // plus lire ni écrire localStorage directement — il deviendrait une
+  // source de vérité concurrente, écraserait les valeurs Supabase au
+  // mount, et provoquerait des aller-retours visibles à l'écran.
+  // L'ancienne hydratation localStorage a été retirée.
+
+  // Synchronise l'état local avec le prop `listes` quand il change.
+  // Critique en étape B : useListe livre une valeur initiale depuis le
+  // cache puis met à jour le state parent une fois Supabase répondu —
+  // sans ce sync, la modale afficherait éternellement les valeurs cache.
   useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(`gl_${storageKey}`) || 'null');
-      if (saved) { setLocal(saved); Object.entries(saved).forEach(([k, v]) => onSave(k, v)); }
-    } catch {}
-  }, []);
+    setLocal(listes);
+  }, [listes]);
 
   useEffect(() => {
     if (open) setExpanded(Object.keys(local)[0] || null);
@@ -28,9 +35,10 @@ export default function GestionListes({ listes, onSave, storageKey }) {
 
   const save = (key, list) => {
     const u = { ...local, [key]: list };
-    setLocal(u);
-    onSave(key, list);
-    if (storageKey) localStorage.setItem(`gl_${storageKey}`, JSON.stringify(u));
+    setLocal(u);                 // optimistic UI
+    onSave(key, list);           // propage vers le parent → Supabase + cache (via useListe)
+    // Pas d'écriture localStorage ici : sauverListe (appelé en cascade
+    // par useListe.updateList) maintient le cache local automatiquement.
   };
 
   const add = (key) => {

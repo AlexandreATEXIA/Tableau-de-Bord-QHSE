@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS public.rgpd_demandes (
   statut           TEXT         NOT NULL DEFAULT 'EN_COURS'
                    CHECK (statut IN ('EN_COURS','TRAITEE','REJETEE','EXPIREE')),
   -- Personne concernée (employé référencé OU tiers externe)
-  employe_id       UUID         REFERENCES public.rh_employes(id) ON DELETE SET NULL,
+  -- FK typée BIGINT : rh_employes.id est un bigint (vérifié en prod 2026-04-24)
+  employe_id       BIGINT       REFERENCES public.rh_employes(id) ON DELETE SET NULL,
   nom_demandeur    TEXT         NOT NULL,
   email_demandeur  TEXT,
   -- Dates clés

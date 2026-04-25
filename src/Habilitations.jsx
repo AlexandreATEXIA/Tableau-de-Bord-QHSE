@@ -6,6 +6,16 @@ import { InputEmploye } from './EmployesContext';
 import GestionListes from './GestionListes';
 import { calcExpiration, diffJours } from './utils/kpi';
 import { logAction } from './auditLog';
+import { useListe } from './utils/useListe';
+
+// Identifiants de persistance des listes éditables — alignés sur la convention
+// utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
+// permettra à ImportExcel de fusionner automatiquement les nouvelles valeurs
+// rencontrées dans un fichier .xlsx sans casser le référentiel existant.
+export const LISTES_HABILITATIONS = {
+  STORAGE_KEY: 'habilitations',
+  HABILITATIONS: 'Habilitations',
+};
 
 const LISTE_HABILITATIONS_DEFAULT = [
   'SST (Sauveteur Secouriste du Travail)', 'ATEX - NV0', 'ATEX - NV1', 'ATEX - NV2',
@@ -47,7 +57,9 @@ export default function Habilitations() {
   const [filtreStatut, setFS]   = useState('Tous');
   const [filtreEmploye, setFE]  = useState('Tous');
   const [vueEmploye, setVE]     = useState(false);
-  const [listeHabs, setListeHabs] = useState(LISTE_HABILITATIONS_DEFAULT);
+  const [listeHabs, setListeHabs] = useListe(
+    LISTES_HABILITATIONS.STORAGE_KEY, LISTES_HABILITATIONS.HABILITATIONS, LISTE_HABILITATIONS_DEFAULT
+  );
   const [form, setForm]         = useState({
     employe: '', domaine: listeHabs[0],
     obtention: new Date().toISOString().split('T')[0], validiteAns: 2,

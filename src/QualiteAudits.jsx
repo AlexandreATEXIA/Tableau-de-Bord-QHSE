@@ -6,6 +6,19 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContai
 import GestionListes from './GestionListes';
 import { safeMean } from './utils/kpi';
 import { logAction } from './auditLog';
+import { useListe } from './utils/useListe';
+
+// Identifiants de persistance des listes éditables — alignés sur la convention
+// utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
+// permet à ImportExcel de fusionner automatiquement les nouvelles valeurs
+// rencontrées dans un fichier .xlsx sans casser le référentiel existant.
+export const LISTES_QUALITE_AUDITS = {
+  STORAGE_KEY: 'qualite_audits',
+  PROCESSUS: 'Processus / Services',
+  TYPES_AUDIT: "Types d'audit",
+  TYPES_NC: 'Types de NC',
+  ORIGINES_NC: 'Origines NC',
+};
 
 /* ─── Listes par défaut ──────────────────────────────────────────────────── */
 const DEF_PROCESSUS   = ['Direction','RH','QHSE','Achats','Commercial','Production','Maintenance','IT','Logistique'];
@@ -57,11 +70,13 @@ export default function QualiteAudits() {
   const [satisfaction, setSatisfaction] = useState([]);
   const [qvt, setQvt]         = useState([]);
 
-  /* Listes personnalisables */
-  const [listeProcessus, setListeProcessus] = useState(DEF_PROCESSUS);
-  const [listeTypesAudit, setListeTypesAudit] = useState(DEF_TYPES_AUDIT);
-  const [listeTypesNC, setListeTypesNC]     = useState(DEF_TYPES_NC);
-  const [listeOrigines, setListeOrigines]   = useState(DEF_ORIGINES);
+  /* Listes personnalisables — branchées sur le hook useListe (étape B) :
+     init synchrone depuis le cache local, refresh Supabase en arrière-plan,
+     écriture propagée vers Supabase + cache au moindre changement. */
+  const [listeProcessus, setListeProcessus]   = useListe(LISTES_QUALITE_AUDITS.STORAGE_KEY, LISTES_QUALITE_AUDITS.PROCESSUS,   DEF_PROCESSUS);
+  const [listeTypesAudit, setListeTypesAudit] = useListe(LISTES_QUALITE_AUDITS.STORAGE_KEY, LISTES_QUALITE_AUDITS.TYPES_AUDIT, DEF_TYPES_AUDIT);
+  const [listeTypesNC, setListeTypesNC]       = useListe(LISTES_QUALITE_AUDITS.STORAGE_KEY, LISTES_QUALITE_AUDITS.TYPES_NC,    DEF_TYPES_NC);
+  const [listeOrigines, setListeOrigines]     = useListe(LISTES_QUALITE_AUDITS.STORAGE_KEY, LISTES_QUALITE_AUDITS.ORIGINES_NC, DEF_ORIGINES);
 
   useEffect(() => { loadAll(); }, []);
 

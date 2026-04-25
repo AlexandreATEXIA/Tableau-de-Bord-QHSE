@@ -4,6 +4,17 @@ import { Plus, Trash2, Droplets, Zap, Recycle, Wind, Leaf, RefreshCw, Save, Tren
 import { supabase } from './supabaseClient';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend } from 'recharts';
 import GestionListes from './GestionListes';
+import { useListe } from './utils/useListe';
+
+// Identifiants de persistance des listes éditables — alignés sur la convention
+// utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
+// permet à ImportExcel de fusionner automatiquement les nouvelles valeurs
+// rencontrées dans un fichier .xlsx sans casser le référentiel existant.
+export const LISTES_ENVIRONNEMENT = {
+  STORAGE_KEY: 'environnement',
+  FLUX: 'Types de flux',
+  UNITES: 'Unités',
+};
 
 const FLUX_DEFAULT = [
   'Électricité', 'Gaz naturel', 'Carburant (véhicules)',
@@ -33,8 +44,8 @@ export default function Environnement() {
   const [releves, setReleves]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(null);
-  const [listeFlux, setListeFlux]   = useState(FLUX_DEFAULT);
-  const [listeUnites, setListeUnites] = useState(UNITES_DEFAULT);
+  const [listeFlux, setListeFlux]     = useListe(LISTES_ENVIRONNEMENT.STORAGE_KEY, LISTES_ENVIRONNEMENT.FLUX,   FLUX_DEFAULT);
+  const [listeUnites, setListeUnites] = useListe(LISTES_ENVIRONNEMENT.STORAGE_KEY, LISTES_ENVIRONNEMENT.UNITES, UNITES_DEFAULT);
   const [form, setForm]           = useState({
     date_relevement: new Date().toISOString().split('T')[0],
     type_flux: FLUX_DEFAULT[0], quantite: '', unite: 'kWh', notes: '',

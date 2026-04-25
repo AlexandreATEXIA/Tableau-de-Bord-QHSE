@@ -9,9 +9,20 @@ import GestionListes from './GestionListes';
 import { useToast } from './Toast';
 import { logAction } from './auditLog';
 import { diffJours } from './utils/kpi';
+import { useListe } from './utils/useListe';
+
+// Identifiants de persistance des listes éditables — alignés sur la convention
+// utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
+// permet à ImportExcel de fusionner automatiquement les nouvelles valeurs
+// rencontrées dans un fichier .xlsx sans casser le référentiel existant.
+export const LISTES_PLAN_ACTIONS = {
+  STORAGE_KEY: 'plan_actions',
+  DOMAINES: 'Domaines',
+  ORIGINES: 'Origines',
+};
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
-const ORIGINES = [
+const ORIGINES_DEFAULT = [
   'DUERP', 'Audit interne', 'Audit de certification', 'Accident du travail',
   "Presqu'accident / Incident", 'Non-conformité', 'Réclamation client',
   'Revue de Direction', 'Veille réglementaire', 'Indicateur hors objectif',
@@ -132,7 +143,8 @@ export default function PlanActions() {
   const { p, isDark } = useTheme();
   const { toast } = useToast();
   const [actions, setActions]       = useState([]);
-  const [listeDomaines, setDomaines]= useState(DOMAINES_DEFAULT);
+  const [listeDomaines, setDomaines] = useListe(LISTES_PLAN_ACTIONS.STORAGE_KEY, LISTES_PLAN_ACTIONS.DOMAINES, DOMAINES_DEFAULT);
+  const [listeOrigines, setOrigines] = useListe(LISTES_PLAN_ACTIONS.STORAGE_KEY, LISTES_PLAN_ACTIONS.ORIGINES, ORIGINES_DEFAULT);
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(null);
   const [showForm, setShowForm]     = useState(false);
@@ -140,7 +152,7 @@ export default function PlanActions() {
   const [filtreStatut, setFS]       = useState('Tous');
   const [filtreType, setFT]         = useState('Tous');
   const [filtreRetard, setFR]       = useState(false);
-  const [form, setForm]             = useState(() => mkForm(DOMAINES_DEFAULT, ORIGINES));
+  const [form, setForm]             = useState(() => mkForm(DOMAINES_DEFAULT, ORIGINES_DEFAULT));
   const [saveError, setSaveError]   = useState('');
   const [showArchive, setShowArchive] = useState(false);
   const actionsRef                  = useRef(actions);
@@ -240,7 +252,7 @@ export default function PlanActions() {
       try { await logAction('plan_actions', data[0].id, 'CREATE', { origine: form.origine, domaine: form.domaine, action: form.action, pilote: form.pilote }); } catch {}
       setActions(prev => [...prev, data[0]]);
       setShowForm(false);
-      setForm(mkForm(listeDomaines, ORIGINES));
+      setForm(mkForm(listeDomaines, listeOrigines));
       toast({ message: 'Action ajoutée au plan', type: 'success' });
     }
   };
@@ -301,8 +313,11 @@ export default function PlanActions() {
         </div>
         <div className="flex gap-3">
           <GestionListes
-            listes={{ 'Domaines': listeDomaines }}
-            onSave={(key, list) => { if (key === 'Domaines') setDomaines(list); }}
+            listes={{ 'Domaines': listeDomaines, 'Origines': listeOrigines }}
+            onSave={(key, list) => {
+              if (key === 'Domaines') setDomaines(list);
+              if (key === 'Origines') setOrigines(list);
+            }}
             storageKey="plan_actions"
           />
           <button onClick={fetchActions} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
@@ -368,7 +383,7 @@ export default function PlanActions() {
               <div>
                 <label style={lbl}>Source de l'action</label>
                 <select value={form.origine} onChange={e => setForm({ ...form, origine: e.target.value })} className="input-modern">
-                  {ORIGINES.map(o => <option key={o}>{o}</option>)}
+                  {listeOrigines.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>

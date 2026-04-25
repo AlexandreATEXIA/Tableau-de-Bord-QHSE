@@ -5,9 +5,20 @@ import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
 import { logAction } from './auditLog';
+import { useListe } from './utils/useListe';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
-const FAMILLES_RISQUES = [
+// Clés de stockage pour les listes DUERP.
+// Aligné sur GestionListes : localStorage[`gl_${STORAGE_KEY}`] = { [key]: [...], ... }
+// Exporté pour être consommé par ImportExcel (auto-enrichissement).
+export const LISTES_DUERP = {
+  STORAGE_KEY: 'duerp',
+  FAMILLES:    'Familles de risques',
+  UT:          'Unités de travail',
+  PERSONNES:   'Personnes exposées',
+};
+
+const FAMILLES_RISQUES_DEFAULT = [
   'Chutes de plain-pied', 'Chutes de hauteur', 'Manutention manuelle',
   'Risques mécaniques (écrasement, coupure)', 'Risques électriques',
   'Risques chimiques', 'Risques biologiques',
@@ -22,7 +33,7 @@ const LISTE_UT_DEFAULT = [
   'Maintenance', 'Chantier / Déplacement', 'Accueil / Réception', 'Direction',
 ];
 
-const PERSONNES_EXPOSEES_LIST = [
+const PERSONNES_EXPOSEES_DEFAULT = [
   'Tous les salariés', 'Opérateurs production', 'Techniciens maintenance',
   'Personnel administratif', 'Personnel logistique', 'Encadrement',
   'Intervenants extérieurs', 'Prestataires / Sous-traitants',
@@ -109,7 +120,9 @@ export default function RegistreDUERP() {
   const [showMatrice, setShowMatrice] = useState(false);
   const [filtreUT, setFiltreUT]       = useState('Tous');
   const [filtreNiveau, setFiltreNiveau] = useState('Tous');
-  const [listeUT, setListeUT]         = useState(LISTE_UT_DEFAULT);
+  const [listeUT, setListeUT]               = useListe(LISTES_DUERP.STORAGE_KEY, LISTES_DUERP.UT,        LISTE_UT_DEFAULT);
+  const [listeFamilles, setListeFamilles]   = useListe(LISTES_DUERP.STORAGE_KEY, LISTES_DUERP.FAMILLES,  FAMILLES_RISQUES_DEFAULT);
+  const [listePersonnes, setListePersonnes] = useListe(LISTES_DUERP.STORAGE_KEY, LISTES_DUERP.PERSONNES, PERSONNES_EXPOSEES_DEFAULT);
   const [form, setForm]               = useState({ ...FORM_INIT });
   const [saveError, setSaveError]     = useState('');
   const [showArchive, setShowArchive] = useState(false);
@@ -375,9 +388,17 @@ export default function RegistreDUERP() {
         </div>
         <div className="flex gap-3 flex-wrap">
           <GestionListes
-            listes={{ 'Unités de travail': listeUT }}
-            onSave={(key, list) => { if (key === 'Unités de travail') setListeUT(list); }}
-            storageKey="duerp"
+            listes={{
+              [LISTES_DUERP.UT]:        listeUT,
+              [LISTES_DUERP.FAMILLES]:  listeFamilles,
+              [LISTES_DUERP.PERSONNES]: listePersonnes,
+            }}
+            onSave={(key, list) => {
+              if (key === LISTES_DUERP.UT)             setListeUT(list);
+              else if (key === LISTES_DUERP.FAMILLES)  setListeFamilles(list);
+              else if (key === LISTES_DUERP.PERSONNES) setListePersonnes(list);
+            }}
+            storageKey={LISTES_DUERP.STORAGE_KEY}
           />
           <button onClick={() => setShowMatrice(v => !v)} className="btn-secondary"><Grid size={16}/> Matrice</button>
           <button onClick={fetchRisques} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
@@ -454,7 +475,7 @@ export default function RegistreDUERP() {
                 <label style={lbl}>Famille de risque</label>
                 <select value={form.famille_risque} onChange={e => setForm({ ...form, famille_risque: e.target.value })} className="input-modern">
                   <option value="">— Sélectionner —</option>
-                  {FAMILLES_RISQUES.map(f => <option key={f}>{f}</option>)}
+                  {listeFamilles.map(f => <option key={f}>{f}</option>)}
                 </select>
               </div>
             </div>
@@ -496,7 +517,7 @@ export default function RegistreDUERP() {
                     }}
                     style={{ border:'none', background:'transparent', color:'var(--text-3)', fontSize:13, cursor:'pointer', outline:'none', flex:1, minWidth:120 }}>
                     <option value="">+ Ajouter...</option>
-                    {PERSONNES_EXPOSEES_LIST.filter(pe => !(form.personnes_exposees || []).includes(pe)).map(pe => <option key={pe} value={pe}>{pe}</option>)}
+                    {listePersonnes.filter(pe => !(form.personnes_exposees || []).includes(pe)).map(pe => <option key={pe} value={pe}>{pe}</option>)}
                   </select>
                 </div>
               </div>

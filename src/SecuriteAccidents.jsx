@@ -7,11 +7,23 @@ import { useToast } from './Toast';
 import { useConfig } from './ConfigContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { logAction } from './auditLog';
+import { useListe } from './utils/useListe';
+
+// Identifiants de persistance des listes éditables — alignés sur la convention
+// utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
+// permet à ImportExcel de fusionner automatiquement les nouvelles valeurs
+// rencontrées dans un fichier .xlsx sans casser le référentiel existant.
+export const LISTES_ACCIDENTS = {
+  STORAGE_KEY: 'accidents',
+  TYPES_EVT: "Types d'événements",
+  LIEUX: 'Lieux',
+  CAUSES: 'Causes',
+};
 
 const TYPES_EVT_DEFAULT = ["Presqu'accident", "Soins (sans arrêt)", "Accident avec arrêt", "Maladie Professionnelle", "Incident matériel"];
 const STATUTS   = ["À lancer", "En cours d'analyse", "Actions définies", "Clôturée"];
 const LIEUX_DEFAULT     = ["Atelier", "Magasin", "Bureaux", "Chantier", "Parking", "Vestiaires", "Autre"];
-const CAUSES    = ["Chute de plain-pied", "Chute de hauteur", "Manutention manuelle", "Utilisation d'outillage", "Projection", "Contact avec machine", "Brûlure", "TMS", "Autre"];
+const CAUSES_DEFAULT    = ["Chute de plain-pied", "Chute de hauteur", "Manutention manuelle", "Utilisation d'outillage", "Projection", "Contact avec machine", "Brûlure", "TMS", "Autre"];
 
 const TYPE_STYLE = {
   "Presqu'accident":        { color: '#3B82F6', badge: 'badge-blue',   label: "Presqu'acc." },
@@ -33,8 +45,9 @@ export default function SecuriteAccidents() {
   const { toast } = useToast();
   const { config } = useConfig();
   const [accidents, setAccidents]   = useState([]);
-  const [listeTypes, setListeTypes] = useState(TYPES_EVT_DEFAULT);
-  const [listeLieux, setListeLieux] = useState(LIEUX_DEFAULT);
+  const [listeTypes, setListeTypes]   = useListe(LISTES_ACCIDENTS.STORAGE_KEY, LISTES_ACCIDENTS.TYPES_EVT, TYPES_EVT_DEFAULT);
+  const [listeLieux, setListeLieux]   = useListe(LISTES_ACCIDENTS.STORAGE_KEY, LISTES_ACCIDENTS.LIEUX,     LIEUX_DEFAULT);
+  const [listeCauses, setListeCauses] = useListe(LISTES_ACCIDENTS.STORAGE_KEY, LISTES_ACCIDENTS.CAUSES,    CAUSES_DEFAULT);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(null);
   const [showForm, setShowForm]     = useState(false);
@@ -159,10 +172,11 @@ export default function SecuriteAccidents() {
         </div>
         <div className="flex gap-3">
           <GestionListes
-            listes={{ "Types d'événements": listeTypes, 'Lieux': listeLieux }}
+            listes={{ "Types d'événements": listeTypes, 'Lieux': listeLieux, 'Causes': listeCauses }}
             onSave={(key, list) => {
               if (key === "Types d'événements") setListeTypes(list);
               if (key === 'Lieux') setListeLieux(list);
+              if (key === 'Causes') setListeCauses(list);
             }}
             storageKey="accidents"
           />
@@ -265,7 +279,7 @@ export default function SecuriteAccidents() {
                 <select value="" onChange={e => { const v = e.target.value; if (v && !(form.cause_immediate||[]).includes(v)) setForm({...form, cause_immediate:[...(form.cause_immediate||[]), v]}); }}
                   style={{ border:'none', background:'transparent', color:'var(--text-3)', fontSize:13, cursor:'pointer', outline:'none', flex:1, minWidth:120 }}>
                   <option value="">+ Ajouter...</option>
-                  {CAUSES.filter(c => !(form.cause_immediate||[]).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
+                  {listeCauses.filter(c => !(form.cause_immediate||[]).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>

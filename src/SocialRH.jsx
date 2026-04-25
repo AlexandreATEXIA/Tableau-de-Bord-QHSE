@@ -10,6 +10,20 @@ import GestionListes from './GestionListes';
 import Habilitations from './Habilitations';
 import { useEmployes } from './EmployesContext';
 import { Upload } from 'lucide-react';
+import { useListe } from './utils/useListe';
+
+// Identifiants de persistance des listes éditables — alignés sur la convention
+// utilisée par GestionListes (clé localStorage `gl_${STORAGE_KEY}`). L'export
+// permet à ImportExcel de fusionner automatiquement les nouvelles valeurs
+// rencontrées dans un fichier .xlsx sans casser le référentiel existant.
+export const LISTES_SOCIAL_RH = {
+  STORAGE_KEY: 'social_rh',
+  POSTES: 'Postes',
+  SERVICES: 'Services',
+  CONTRATS: 'Contrats',
+  TYPES_FORM: 'Types de formation',
+  ORGANISMES: 'Organismes',
+};
 
 // ─── Listes par défaut ────────────────────────────────────────────────────────
 const POSTES_DEFAULT    = ['Responsable QHSE','Opérateur','Technicien','Agent de maîtrise','Cadre','Administratif','Chargé d\'affaires','Manager','Direction'];
@@ -33,12 +47,13 @@ export default function SocialRH() {
   const [formations, setFormations] = useState([]);
   const [accidents, setAccidents]  = useState([]);
 
-  // Listes personnalisables
-  const [listePostes, setPostes]   = useState(POSTES_DEFAULT);
-  const [listeServices, setServices] = useState(SERVICES_DEFAULT);
-  const [listeContrats, setContrats] = useState(CONTRATS_DEFAULT);
-  const [listeTypesForm, setTypesForm] = useState(TYPES_FORM_DEFAULT);
-  const [listeOrganismes, setOrganismes] = useState(ORGANISMES_DEFAULT);
+  // Listes personnalisables — branchées sur useListe (étape B) :
+  // cache local instantané + refresh Supabase + écritures synchronisées.
+  const [listePostes, setPostes]         = useListe(LISTES_SOCIAL_RH.STORAGE_KEY, LISTES_SOCIAL_RH.POSTES,     POSTES_DEFAULT);
+  const [listeServices, setServices]     = useListe(LISTES_SOCIAL_RH.STORAGE_KEY, LISTES_SOCIAL_RH.SERVICES,   SERVICES_DEFAULT);
+  const [listeContrats, setContrats]     = useListe(LISTES_SOCIAL_RH.STORAGE_KEY, LISTES_SOCIAL_RH.CONTRATS,   CONTRATS_DEFAULT);
+  const [listeTypesForm, setTypesForm]   = useListe(LISTES_SOCIAL_RH.STORAGE_KEY, LISTES_SOCIAL_RH.TYPES_FORM, TYPES_FORM_DEFAULT);
+  const [listeOrganismes, setOrganismes] = useListe(LISTES_SOCIAL_RH.STORAGE_KEY, LISTES_SOCIAL_RH.ORGANISMES, ORGANISMES_DEFAULT);
 
   const [saving, setSaving]       = useState(null);
   const [importLoading, setImportLoading] = useState(false);
