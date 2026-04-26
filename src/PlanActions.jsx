@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
@@ -162,7 +167,7 @@ export default function PlanActions() {
   useEffect(() => { fetchActions(); }, []);
 
   /* ── Fetch ──────────────────────────────────────────────────────────────── */
-  const fetchActions = async () => {
+  async function fetchActions() {
     setLoading(true);
     const { data } = await supabase.from('plan_actions').select('*').order('id', { ascending: true });
     if (data) setActions(data);
@@ -720,4 +725,4 @@ export default function PlanActions() {
 
     </div>
   );
-}
+}

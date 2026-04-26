@@ -86,7 +86,7 @@ export default function Parametres() {
     />
   );
 
-  const textInput = (key, placeholder) => (
+  const _textInput = (key, placeholder) => (
     <input
       type="text"
       value={draft[key] || ''}

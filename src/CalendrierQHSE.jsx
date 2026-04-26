@@ -346,8 +346,8 @@ export default function CalendrierQHSE() {
                 const evs = eventsByDate[day.date] || [];
                 const isToday = day.date === todayStr;
                 const isSelected = day.date === selectedDay;
-                const hasRetard = evs.some(e => urgence(e.date) === 'retard');
-                const hasUrgent = evs.some(e => urgence(e.date) === 'urgent');
+                const _hasRetard = evs.some(e => urgence(e.date) === 'retard');
+                const _hasUrgent = evs.some(e => urgence(e.date) === 'urgent');
                 const dayNum = parseInt(day.date.split('-')[2]);
                 const isWeekend = idx % 7 >= 5;
 

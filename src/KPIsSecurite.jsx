@@ -29,7 +29,7 @@ export default function KPIsSecurite() {
 
   useEffect(() => { charger(); }, []);
 
-  const charger = async () => {
+  async function charger() {
     setLoading(true);
     const [r1,r2,r3,r4,r5,r6,r7] = await Promise.all([
       supabase.from('securite_accidents').select('*').order('date_evenement'),
@@ -72,7 +72,7 @@ export default function KPIsSecurite() {
     const { accidents, actions, habs, risques, sat, ncs } = data;
     const heures = effectif * H_AN;
     const now    = new Date();
-    const anneeN = now.getFullYear();
+    const _anneeN = now.getFullYear();
 
     // Sécurité
     const accArret   = accidents.filter(a => a.type_evenement === 'Accident avec arrêt');

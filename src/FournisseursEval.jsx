@@ -92,7 +92,7 @@ export default function FournisseursEval() {
 
   useEffect(() => { fetchFournisseurs(); }, []);
 
-  const fetchFournisseurs = async () => {
+  async function fetchFournisseurs() {
     setLoading(true);
     const { data, error } = await supabase.from('fournisseurs_eval').select('*').order('nom');
     if (error) {

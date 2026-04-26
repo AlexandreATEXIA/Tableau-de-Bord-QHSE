@@ -40,7 +40,7 @@ export default function AgendaSemaine({ onNavigate }) {
     const horizonStr = horizon.toISOString().split('T')[0];
     const now = new Date().toISOString().split('T')[0];
 
-    const [r1, r2, r3, r4] = await Promise.all([
+    const [r1, r2, r3, _r4] = await Promise.all([
       // Actions PDCA à échéance dans 30j ou en retard (actives seulement)
       supabase.from('plan_actions').select('id,action,echeance,pilote,statut,domaine')
         .lte('echeance', horizonStr).not('statut', 'in', '("Terminé","Annulé")').is('archived_at', null).order('echeance'),

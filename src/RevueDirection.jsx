@@ -13,13 +13,10 @@ import {
 // Les fonctions calcExp et diffJ locales ont été consolidées vers utils/kpi.js
 // (`calcExpiration` + `diffJours`) pour éviter les implémentations divergentes.
 
-function getStatutColor(val, seuil1, seuil2, inverse = false) {
-  if (inverse) return val <= seuil1 ? '#10B981' : val <= seuil2 ? '#F59E0B' : '#EF4444';
-  return val >= seuil1 ? '#10B981' : val >= seuil2 ? '#F59E0B' : '#EF4444';
-}
+// getStatutColor retiré (helper non utilisé — ESLint cleanup).
 
 export default function RevueDirection() {
-  const { p } = useTheme();
+  const { p: _p } = useTheme();
   const { config } = useConfig();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);

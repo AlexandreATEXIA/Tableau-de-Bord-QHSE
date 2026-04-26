@@ -29,7 +29,7 @@ export default function Statistiques() {
   const { p } = useTheme();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [periode, setPeriode] = useState('annee'); // mois | trimestre | annee
+  const [_periode, _setPeriode] = useState('annee'); // mois | trimestre | annee — non utilisé pour l'instant, conservé pour évolution future
 
   useEffect(() => { chargerDonnees(); }, []);
 

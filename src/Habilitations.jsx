@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, GraduationCap, AlertTriangle, UserCheck, RefreshCw, Filter, X, Save, Users, Clock } from 'lucide-react';
@@ -68,7 +73,7 @@ export default function Habilitations() {
 
   useEffect(() => { fetchHabs(); }, []);
 
-  const fetchHabs = async () => {
+  async function fetchHabs() {
     setLoading(true);
     const { data } = await supabase.from('habilitations').select('*').order('employe');
     if (data) setHabs(data);
@@ -368,4 +373,4 @@ export default function Habilitations() {
       )}
     </div>
   );
-}
+}

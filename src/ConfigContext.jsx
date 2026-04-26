@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 
@@ -46,4 +51,4 @@ export function ConfigProvider({ children }) {
   return <ConfigCtx.Provider value={{ config, saveConfig, loading }}>{children}</ConfigCtx.Provider>;
 }
 
-export function useConfig() { return useContext(ConfigCtx); }
+export function useConfig() { return useContext(ConfigCtx); }

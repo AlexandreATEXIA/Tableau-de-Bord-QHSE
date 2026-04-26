@@ -42,7 +42,7 @@ const TEXTES_REF = [
 ];
 
 export default function VeilleReglementaire() {
-  const { p } = useTheme();
+  const { p: _p } = useTheme();
   const [textes, setTextes]               = useState([]);
   const [loading, setLoading]             = useState(true);
   const [veilleLoading, setVeilleLoading] = useState(false);

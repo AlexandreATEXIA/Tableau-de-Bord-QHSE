@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
 
@@ -56,4 +61,4 @@ export function ToastProvider({ children }) {
   );
 }
 
-export function useToast() { return useContext(ToastCtx); }
+export function useToast() { return useContext(ToastCtx); }

@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock, X, Save, ChevronDown, ChevronUp, Activity, Calendar, Archive, RotateCcw, History } from 'lucide-react';
@@ -70,7 +75,7 @@ export default function SecuriteAccidents() {
 
   useEffect(() => { loadData(); }, []);
 
-  const loadData = async () => {
+  async function loadData() {
     setLoading(true);
     const { data } = await supabase.from('securite_accidents').select('*').order('date_evenement', { ascending: false });
     if (data) setAccidents(data);
@@ -440,4 +445,4 @@ export default function SecuriteAccidents() {
       </div>
     </div>
   );
-}
+}

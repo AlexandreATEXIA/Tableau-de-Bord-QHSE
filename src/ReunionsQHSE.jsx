@@ -56,7 +56,7 @@ export default function ReunionsQHSE() {
 
   useEffect(() => { fetchReunions(); }, []);
 
-  const fetchReunions = async () => {
+  async function fetchReunions() {
     setLoading(true);
     const { data, error } = await supabase
       .from('reunions_qhse')

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Settings, Plus, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useUser } from './UserContext';
 
-export default function GestionListes({ listes, onSave, storageKey }) {
+export default function GestionListes({ listes, onSave, storageKey: _storageKey }) {
   // ⚠️ Tous les hooks doivent être appelés AVANT tout early return — ne pas
   // déplacer le `if (!canWrite) return null` plus haut, ça casserait les
   // Rules of Hooks de React au prochain re-render.

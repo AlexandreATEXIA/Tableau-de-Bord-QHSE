@@ -1,5 +1,5 @@
 import { useTheme } from './ThemeContext';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import {
   Mail, Send, CheckCircle, AlertTriangle, Clock, Bell,

@@ -375,7 +375,7 @@ function SignaturePad({ value, onChange }) {
     lastPos.current = pos;
   }
 
-  function endDraw(e) {
+  function endDraw(_e) {
     if (!drawing.current) return;
     drawing.current = false;
     const canvas = canvasRef.current;
@@ -587,7 +587,7 @@ function CategorieSection({ cat, reponses, observations, photos, onChange, onObs
 }
 
 // ── Composant Synthèse ───────────────────────────────────────────────────────
-function Synthese({ analyse, onRetour }) {
+function Synthese({ analyse, onRetour: _onRetour }) {
   const totalQ = CATEGORIES.reduce((s, c) => s + c.questions.length, 0);
   const totalAnswered = Object.keys(analyse.reponses).length;
   const totalOui = Object.values(analyse.reponses).filter(r => r === 'oui').length;
@@ -1028,7 +1028,7 @@ export default function AnalyseRisqueChantier() {
         }
         setGeoLoading(false);
       },
-      (err) => {
+      (_err) => {
         setGeoLoading(false);
         setGeoError('Accès à la position refusé');
       }

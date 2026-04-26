@@ -28,7 +28,7 @@ export default function DashboardComex({ onNavigate }) {
 
   useEffect(() => { charger(); }, []);
 
-  const charger = async () => {
+  async function charger() {
     setLoading(true);
     const [r1,r2,r3,r4,r5,r6,r7] = await Promise.all([
       supabase.from('securite_accidents').select('*').is('archived_at', null).order('date_evenement'),

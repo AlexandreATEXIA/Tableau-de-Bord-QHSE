@@ -180,7 +180,7 @@ function formatDate(val) {
       // attraper les cas type "31 février" ou "30 février" (le constructeur
       // JS les convertit silencieusement, le round-trip ISO ne correspondra
       // alors plus à la chaîne d'origine).
-      const [y, mo, d] = candidate.split('-').map(Number);
+      const [_y, mo, d] = candidate.split('-').map(Number);
       if (mo < 1 || mo > 12) {
         throw new Error(`date invalide "${val}" : mois "${String(mo).padStart(2,'0')}" hors plage (01-12)`);
       }
@@ -296,7 +296,7 @@ async function enrichirListesDepuisImport(rows, mapping) {
 export default function ImportExcel() {
   const { p } = useTheme();
   const [dragging, setDragging]   = useState(false);
-  const [fichier, setFichier]     = useState(null);
+  const [_fichier, setFichier]    = useState(null);
   const [apercu, setApercu]       = useState(null);
   const [validations, setValid]   = useState({});
   const [loading, setLoading]     = useState(false);
@@ -606,7 +606,7 @@ export default function ImportExcel() {
             </div>
 
             {/* Tableaux aperçu */}
-            {apercu.map(({ sheetName, label, color, rows }) => (
+            {apercu.map(({ sheetName, label: _label, color, rows }) => (
               <div key={sheetName} className="mb-5">
                 <div className="flex items-center gap-2 mb-2">
                   <div style={{width:8,height:8,background:color,borderRadius:'50%'}}/>

@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Droplets, Zap, Recycle, Wind, Leaf, RefreshCw, Save, TrendingDown, TrendingUp } from 'lucide-react';
@@ -56,7 +61,7 @@ export default function Environnement() {
 
   useEffect(() => { fetchReleves(); }, []);
 
-  const fetchReleves = async () => {
+  async function fetchReleves() {
     setLoading(true);
     const { data } = await supabase.from('environnement_flux').select('*').order('date_relevement', { ascending: false });
     if (data) setReleves(data);
@@ -101,7 +106,7 @@ export default function Environnement() {
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const energie = releves.filter(r => ['Électricité','Gaz naturel','Carburant (véhicules)'].includes(r.type_flux));
+    const _energie = releves.filter(r => ['Électricité','Gaz naturel','Carburant (véhicules)'].includes(r.type_flux));
     const eau     = releves.filter(r => r.type_flux?.includes('Eau'));
     const dechets = releves.filter(r => ['DIB (Déchets Industriels Banaux)','Déchets Dangereux (DID)','Carton / Papier','Plastique','Métal / Ferraille','Déchets verts','DEEE'].some(d => r.type_flux?.includes(d.split(' ')[0])));
 
@@ -365,4 +370,4 @@ export default function Environnement() {
       </div>
     </div>
   );
-}
+}

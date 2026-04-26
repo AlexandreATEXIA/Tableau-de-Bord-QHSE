@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
+   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
+   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
+   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Save, Trash2, ClipboardCheck, AlertTriangle, Star, RefreshCw, Smile, CheckCircle, Clock, XCircle, BarChart2, Settings } from 'lucide-react';
@@ -65,7 +70,7 @@ function JaugeScore({ score }) {
 export default function QualiteAudits() {
   const { p } = useTheme();
   const [subTab, setSubTab]   = useState('audits');
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [audits, setAudits]   = useState([]);
   const [ncs, setNcs]         = useState([]);
   const [satisfaction, setSatisfaction] = useState([]);
@@ -81,7 +86,7 @@ export default function QualiteAudits() {
 
   useEffect(() => { loadAll(); }, []);
 
-  const loadAll = async () => {
+  async function loadAll() {
     setLoading(true);
     const [rA,rN,rS,rQ] = await Promise.all([
       supabase.from('qualite_audits').select('*').order('id'),
@@ -479,4 +484,4 @@ export default function QualiteAudits() {
       </div>
     </div>
   );
-}
+}
