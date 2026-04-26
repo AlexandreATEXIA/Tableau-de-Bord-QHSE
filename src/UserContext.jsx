@@ -81,29 +81,24 @@ export function UserProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // getSession() résout vite (pas de network call si la session est en cache).
-    // Le risque de hang était sur fetchRole — désormais protégé par son propre
-    // timeout 8s. Ici on garde juste un .catch() pour libérer le loading
-    // si getSession lui-même crashe (très rare).
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      const u = session?.user ?? null;
-      setUser(u);
-      await fetchRole(u);
-      setLoading(false);
-    }).catch((e) => {
-      if (!mounted) return;
-      console.warn('[UserContext] getSession failed:', e?.message || e);
-      setUser(null);
-      setRole(null);
-      setLoading(false);
-    });
-
+    // Avant : on appelait fetchRole DEUX fois au démarrage (une dans
+    // getSession().then() ET une dans onAuthStateChange via l'event
+    // INITIAL_SESSION qui se déclenche automatiquement à la souscription).
+    // Conséquence : race condition + double-appel inutile. Le premier
+    // pouvait timeout sur 8s avant que le second réussisse.
+    //
+    // Solution : on s'appuie UNIQUEMENT sur onAuthStateChange. Supabase
+    // garantit l'envoi d'un event 'INITIAL_SESSION' à la souscription
+    // avec la session courante (ou null si non connecté). Donc pas
+    // besoin du getSession() initial — un seul chemin, pas de race.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       const u = session?.user ?? null;
       setUser(u);
       await fetchRole(u);
+      // setLoading(false) ici plutôt qu'au getSession.then : on libère
+      // l'écran de chargement seulement quand on connaît rôle (ou null).
+      setLoading(false);
     });
 
     return () => { mounted = false; subscription.unsubscribe(); };
