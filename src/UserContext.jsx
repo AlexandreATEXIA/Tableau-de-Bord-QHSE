@@ -52,17 +52,28 @@ export function UserProvider({ children }) {
   // RLS bloque, ligne inexistante) on retombe sur null = aucun accès.
   // C'est le comportement le plus sûr : un user mal configuré ne peut
   // pas accidentellement passer en admin.
+  //
+  // Timeout 8s pour éviter que le hook se bloque indéfiniment si Supabase
+  // met du temps à répondre (cas des sessions stale au reload). Au pire
+  // on retombe sur role=null et l'utilisateur peut retry la connexion.
   const fetchRole = async (currentUser) => {
     if (!currentUser) { setRole(null); return; }
     try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', currentUser.id)
-        .maybeSingle();
+      const result = await Promise.race([
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', currentUser.id)
+          .maybeSingle(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('fetchRole timeout 8s')), 8000)
+        ),
+      ]);
+      const { data, error } = result;
       if (error) throw error;
       setRole(data?.role ?? null);
-    } catch {
+    } catch (e) {
+      console.warn('[UserContext] fetchRole failed:', e?.message || e);
       setRole(null);
     }
   };
@@ -70,30 +81,19 @@ export function UserProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // Timeout de sécurité : si supabase.auth.getSession() ou fetchRole hang
-    // (réseau lent, session expirée bloquée au refresh, etc.), on libère
-    // l'écran de loading après 10s plutôt que de laisser le spinner infini.
-    // L'utilisateur tombe sur LoginPage et peut se reconnecter pour repartir
-    // sur une session fraîche. Sans ce filet, le user devait vider son cache
-    // navigateur à chaque lancement.
-    const timeoutId = setTimeout(() => {
-      if (!mounted) return;
-      console.warn('[UserContext] Auth timeout (10s) — fallback à LoginPage');
-      setUser(null);
-      setRole(null);
-      setLoading(false);
-    }, 10000);
-
+    // getSession() résout vite (pas de network call si la session est en cache).
+    // Le risque de hang était sur fetchRole — désormais protégé par son propre
+    // timeout 8s. Ici on garde juste un .catch() pour libérer le loading
+    // si getSession lui-même crashe (très rare).
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
-      clearTimeout(timeoutId);
       const u = session?.user ?? null;
       setUser(u);
       await fetchRole(u);
       setLoading(false);
-    }).catch(() => {
+    }).catch((e) => {
       if (!mounted) return;
-      clearTimeout(timeoutId);
+      console.warn('[UserContext] getSession failed:', e?.message || e);
       setUser(null);
       setRole(null);
       setLoading(false);
@@ -106,7 +106,7 @@ export function UserProvider({ children }) {
       await fetchRole(u);
     });
 
-    return () => { mounted = false; clearTimeout(timeoutId); subscription.unsubscribe(); };
+    return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
   const displayName = user?.user_metadata?.prenom
