@@ -41,7 +41,7 @@ const CATEGORIES = {
 };
 
 export default function Environnement() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [releves, setReleves]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(null);
@@ -352,7 +352,7 @@ export default function Environnement() {
                       <td className="text-center">
                         {saving === row.id
                           ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/>
-                          : <button onClick={() => deleteRow(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button>
+                          : <WriteOnly><button onClick={() => deleteRow(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button></WriteOnly>
                         }
                       </td>
                     </tr>

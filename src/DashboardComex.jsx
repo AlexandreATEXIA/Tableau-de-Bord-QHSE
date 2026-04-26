@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTheme } from './ThemeContext';
 import { supabase } from './supabaseClient';
+import { WriteOnly } from './WriteGuard';
 import {
   LayoutDashboard, RefreshCw, AlertTriangle, CheckCircle, Clock,
   ShieldAlert, Star, HeartPulse, GraduationCap, Target, Activity, Zap, Save
@@ -15,7 +16,7 @@ import AgendaSemaine from './AgendaSemaine';
 import { safeMean, safeNumber, calcExpiration } from './utils/kpi';
 
 export default function DashboardComex({ onNavigate }) {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const { config, saveConfig } = useConfig();
   const EFFECTIF   = config.effectif;
   const EFFECTIF_H = config.h_an;
@@ -120,7 +121,8 @@ export default function DashboardComex({ onNavigate }) {
     if(habsBientot.length>0)  alertes.push({level:'amber', msg:`${habsBientot.length} habilitation(s) à renouveler dans 30 jours`,tab:'rh'});
     if(alertes.length===0)    alertes.push({level:'green', msg:'Tous les indicateurs sont au vert — Excellent !'});
 
-    return { accArret:accArret.length, jours, TF, TG, actRetard:actRetard.length, actTerminees:actTerminees.length, tauxPDCA, totalActions:actions.length, habsPerimees:habsPerimees.length, habsBientot:habsBientot.length, risquesCrit:risquesCrit.length, totalRisques:risques.length, ncOuvertes:ncOuvertes.length, tauxNC, moyenneSat, scoreGlobal, scoreSecurite, scoreHabs, scoreMaitrise, tauxPDCA, scoreSat, scoreAudit, accChart, ncChart, satChart, radarData, alertes };
+    // Note : `tauxPDCA` était doublonné — supprimé la 2e occurrence (ESLint no-dupe-keys).
+    return { accArret:accArret.length, jours, TF, TG, actRetard:actRetard.length, actTerminees:actTerminees.length, tauxPDCA, totalActions:actions.length, habsPerimees:habsPerimees.length, habsBientot:habsBientot.length, risquesCrit:risquesCrit.length, totalRisques:risques.length, ncOuvertes:ncOuvertes.length, tauxNC, moyenneSat, scoreGlobal, scoreSecurite, scoreHabs, scoreMaitrise, scoreSat, scoreAudit, accChart, ncChart, satChart, radarData, alertes };
   }, [data]);
 
   if (loading||!kpis) return (
@@ -185,7 +187,7 @@ export default function DashboardComex({ onNavigate }) {
           </div>
           <div className="flex gap-3">
             <button onClick={() => setShowConfig(false)} className="btn-secondary">Annuler</button>
-            <button onClick={async () => { await saveConfig(cfgEdit); setShowConfig(false); charger(); }} className="btn-primary"><Save size={15}/> Enregistrer</button>
+            <WriteOnly><button onClick={async () => { await saveConfig(cfgEdit); setShowConfig(false); charger(); }} className="btn-primary"><Save size={15}/> Enregistrer</button></WriteOnly>
           </div>
         </div>
       )}

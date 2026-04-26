@@ -109,9 +109,28 @@ export default function GestionUtilisateurs({ onClose }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18}/></button>
         </div>
 
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 18, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, lineHeight: 1.5 }}>
           Crée un accès sécurisé pour un collègue. Il pourra se connecter avec cet email + mot de passe.
         </p>
+
+        {/* Étape E — avertissement déconnexion automatique
+            supabase.auth.signUp() connecte automatiquement le nouveau compte
+            (si la confirmation email est désactivée), ce qui expulse l'admin.
+            On prévient explicitement plutôt que de laisser l'admin perplexe. */}
+        <div style={{
+          display:'flex', gap:10, padding:'10px 12px', marginBottom:16,
+          background:'rgba(245,158,11,0.08)',
+          border:'1px solid rgba(245,158,11,0.3)',
+          borderRadius:9,
+        }}>
+          <AlertTriangle size={16} style={{ color:'#F59E0B', flexShrink:0, marginTop:1 }}/>
+          <div style={{ fontSize:11.5, color:'#FCD34D', lineHeight:1.5 }}>
+            <strong>Vous serez automatiquement déconnecté</strong> après la création
+            (limitation Supabase : le nouveau compte prend votre session).
+            Reconnectez-vous simplement avec votre identifiant admin habituel,
+            le compte du collègue est créé et opérationnel.
+          </div>
+        </div>
 
         {result ? (
           <div style={{ padding: '16px', borderRadius: 10, background: result.success ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${result.success ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, textAlign: 'center', marginBottom: 16 }}>

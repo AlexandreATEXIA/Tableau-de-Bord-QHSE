@@ -21,7 +21,7 @@ function loadConfig() {
 }
 
 export default function NotificationsEmail() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [config, setConfig]     = useState(loadConfig);
   const [newEmail, setNewEmail] = useState('');
   const [loading, setLoading]   = useState(false);

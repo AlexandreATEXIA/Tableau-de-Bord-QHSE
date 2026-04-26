@@ -39,7 +39,7 @@ const CONTRAT_COLORS = { 'CDI':'#10B981','CDD':'#3B82F6','Intérim':'#F59E0B','A
 const EFFECTIF_AN = 1607; // heures/an/salarié
 
 export default function SocialRH() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [subTab, setSubTab]       = useState('effectifs');
   const [loading, setLoading]     = useState(false);
 
@@ -356,7 +356,7 @@ export default function SocialRH() {
                             </select>
                           </td>
                           <td><input type="date" value={row.date_entree||''} onChange={e => updateEmp(row.id,'date_entree',e.target.value)} onBlur={() => saveEmp(employes.find(e=>e.id===row.id))} className="input-modern" style={{padding:'5px 8px',fontSize:12}}/></td>
-                          <td className="text-center">{saving===row.id ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/> : <button onClick={() => deleteEmp(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button>}</td>
+                          <td className="text-center">{saving===row.id ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/> : <WriteOnly><button onClick={() => deleteEmp(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button></WriteOnly>}</td>
                         </tr>
                       );
                     })}
@@ -470,7 +470,7 @@ export default function SocialRH() {
                               {STATUTS_FORM.map(s => <option key={s} style={{background:'#0B1120',color:p.text1,fontWeight:400}}>{s}</option>)}
                             </select>
                           </td>
-                          <td className="text-center">{saving===row.id ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/> : <button onClick={() => deleteForm(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button>}</td>
+                          <td className="text-center">{saving===row.id ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/> : <WriteOnly><button onClick={() => deleteForm(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button></WriteOnly>}</td>
                         </tr>
                       );
                     })}

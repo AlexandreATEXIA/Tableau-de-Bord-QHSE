@@ -1565,7 +1565,7 @@ export default function AnalyseRisqueChantier() {
           </span>
           <button onClick={() => {
             setPwaBanner(false);
-            try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
+            try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch { /* silencieux : non bloquant */ }
           }} style={{
             background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, borderRadius: 6

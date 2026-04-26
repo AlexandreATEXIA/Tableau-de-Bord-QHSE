@@ -28,7 +28,7 @@ function ModalIncident({ onClose }) {
       cause_immediate: '', victime: '', temoin: '', jours_perdus: 0,
       statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '',
     }]).select();
-    try { await logAction('securite_accidents', data?.[0]?.id, 'CREATE', { source: 'QuickAction', type: form.type_evenement, lieu: form.lieu }); } catch {}
+    try { await logAction('securite_accidents', data?.[0]?.id, 'CREATE', { source: 'QuickAction', type: form.type_evenement, lieu: form.lieu }); } catch { /* silencieux : non bloquant */ }
     setSaving(false);
     setDone(true);
     setTimeout(onClose, 1500);
@@ -82,7 +82,7 @@ function ModalAction({ onClose }) {
     const { data } = await supabase.from('plan_actions').insert([{
       ...form, avancement_pct: 0, cause_racine: '', commentaire: '', cout_estime: '',
     }]).select();
-    try { await logAction('plan_actions', data?.[0]?.id, 'CREATE', { source: 'QuickAction', action: form.action, pilote: form.pilote }); } catch {}
+    try { await logAction('plan_actions', data?.[0]?.id, 'CREATE', { source: 'QuickAction', action: form.action, pilote: form.pilote }); } catch { /* silencieux : non bloquant */ }
     setSaving(false);
     setDone(true);
     setTimeout(onClose, 1500);
@@ -143,7 +143,7 @@ function ModalRisque({ onClose }) {
     setSaving(true);
     const ci = form.gravite * form.probabilite;
     const { data } = await supabase.from('registre_duerp').insert([{ ...form, criticite: ci, criticite_resid: ci, action_preventive: '', pilote: '', date_maj: new Date().toISOString().split('T')[0] }]).select();
-    try { await logAction('registre_duerp', data?.[0]?.id, 'CREATE', { source: 'QuickAction', danger: form.danger, criticite: ci }); } catch {}
+    try { await logAction('registre_duerp', data?.[0]?.id, 'CREATE', { source: 'QuickAction', danger: form.danger, criticite: ci }); } catch { /* silencieux : non bloquant */ }
     setSaving(false);
     setDone(true);
     setTimeout(onClose, 1500);

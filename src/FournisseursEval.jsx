@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Star, RefreshCw, Save, X, ShoppingCart, CheckCircle, AlertTriangle, TrendingUp, Filter } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import ConfirmModal from './ConfirmModal';
+import { WriteOnly } from './WriteGuard';
 
 /* ─── Référentiels ──────────────────────────────────────────────────────────── */
 const SECTEURS = ['Matières premières', 'Équipements', 'Sous-traitance', 'Services', 'Logistique', 'IT / Numérique', 'Maintenance', 'Autre'];
@@ -167,7 +168,7 @@ export default function FournisseursEval() {
         </div>
         <div className="flex gap-3">
           <button onClick={fetchFournisseurs} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouveau fournisseur</button>
+          <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouveau fournisseur</button></WriteOnly>
         </div>
       </header>
 
@@ -208,7 +209,7 @@ export default function FournisseursEval() {
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <ShoppingCart size={36} style={{ color: p.text4 }}/>
             <p style={{ color: p.text3, fontSize: 13 }}>Aucun fournisseur enregistré</p>
-            <button onClick={() => setShowForm(true)} className="btn-primary text-sm"><Plus size={14}/> Ajouter</button>
+            <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary text-sm"><Plus size={14}/> Ajouter</button></WriteOnly>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -279,12 +280,14 @@ export default function FournisseursEval() {
                       </td>
                       <td style={{ padding: '8px 14px' }}>
                         <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
-                          <button onClick={() => saveRow(row)} title="Sauvegarder" style={{ padding: '5px 8px', background: p.bgCard2, border: '1px solid ' + p.border, borderRadius: 6, cursor: 'pointer', color: p.blue, display: 'flex' }}>
-                            {saving === row.id ? <RefreshCw size={14} className="animate-spin"/> : <Save size={14}/>}
-                          </button>
-                          <button onClick={() => setConfirm({ message: `Supprimer "${row.nom}" du panel fournisseurs ?`, onConfirm: () => deleteRow(row.id) })} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, cursor: 'pointer', color: '#EF4444', display: 'flex' }}>
-                            <Trash2 size={14}/>
-                          </button>
+                          <WriteOnly>
+                            <button onClick={() => saveRow(row)} title="Sauvegarder" style={{ padding: '5px 8px', background: p.bgCard2, border: '1px solid ' + p.border, borderRadius: 6, cursor: 'pointer', color: p.blue, display: 'flex' }}>
+                              {saving === row.id ? <RefreshCw size={14} className="animate-spin"/> : <Save size={14}/>}
+                            </button>
+                            <button onClick={() => setConfirm({ message: `Supprimer "${row.nom}" du panel fournisseurs ?`, onConfirm: () => deleteRow(row.id) })} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, cursor: 'pointer', color: '#EF4444', display: 'flex' }}>
+                              <Trash2 size={14}/>
+                            </button>
+                          </WriteOnly>
                         </div>
                       </td>
                     </tr>

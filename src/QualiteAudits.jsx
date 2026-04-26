@@ -63,7 +63,7 @@ function JaugeScore({ score }) {
 }
 
 export default function QualiteAudits() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [subTab, setSubTab]   = useState('audits');
   const [loading, setLoading] = useState(false);
   const [audits, setAudits]   = useState([]);
@@ -101,28 +101,28 @@ export default function QualiteAudits() {
     const { id, ...data } = row;
     if (id) {
       await supabase.from('qualite_audits').update(data).eq('id', id);
-      try { await logAction('qualite_audits', id, 'UPDATE', { titre: data.titre, statut: data.statut }); } catch {}
+      try { await logAction('qualite_audits', id, 'UPDATE', { titre: data.titre, statut: data.statut }); } catch { /* silencieux : non bloquant */ }
     }
   };
   const saveNC = async (row) => {
     const { id, ...data } = row;
     if (id) {
       await supabase.from('qualite_nc').update(data).eq('id', id);
-      try { await logAction('qualite_nc', id, 'UPDATE', { type: data.type_nc, statut: data.statut_nc }); } catch {}
+      try { await logAction('qualite_nc', id, 'UPDATE', { type: data.type_nc, statut: data.statut_nc }); } catch { /* silencieux : non bloquant */ }
     }
   };
   const saveSat = async (row) => {
     const { id, ...data } = row;
     if (id) {
       await supabase.from('qualite_satisfaction').update(data).eq('id', id);
-      try { await logAction('qualite_satisfaction', id, 'UPDATE', { client: data.client, note: data.note_globale }); } catch {}
+      try { await logAction('qualite_satisfaction', id, 'UPDATE', { client: data.client, note: data.note_globale }); } catch { /* silencieux : non bloquant */ }
     }
   };
   const saveQvt = async (row) => {
     const { id, ...data } = row;
     if (id) {
       await supabase.from('qualite_qvt').update(data).eq('id', id);
-      try { await logAction('qualite_qvt', id, 'UPDATE', { campagne: data.nom_campagne, note: data.note_moyenne }); } catch {}
+      try { await logAction('qualite_qvt', id, 'UPDATE', { campagne: data.nom_campagne, note: data.note_moyenne }); } catch { /* silencieux : non bloquant */ }
     }
   };
 
@@ -139,7 +139,7 @@ export default function QualiteAudits() {
       auditeur:'', date: new Date().toISOString().slice(0,10), statut:'Planifié', score:0
     }]).select();
     if (data) {
-      try { await logAction('qualite_audits', data[0]?.id, 'CREATE', { type: listeTypesAudit[0], processus: listeProcessus[0] }); } catch {}
+      try { await logAction('qualite_audits', data[0]?.id, 'CREATE', { type: listeTypesAudit[0], processus: listeProcessus[0] }); } catch { /* silencieux : non bloquant */ }
       loadAll();
     }
   };
@@ -150,7 +150,7 @@ export default function QualiteAudits() {
       description:'', statut_nc:'Ouverte', action_corrective:''
     }]).select();
     if (data) {
-      try { await logAction('qualite_nc', data[0]?.id, 'CREATE', { processus: listeProcessus[0], type: listeTypesNC[0] }); } catch {}
+      try { await logAction('qualite_nc', data[0]?.id, 'CREATE', { processus: listeProcessus[0], type: listeTypesNC[0] }); } catch { /* silencieux : non bloquant */ }
       loadAll();
     }
   };
@@ -159,7 +159,7 @@ export default function QualiteAudits() {
       date_enquete: new Date().toISOString().slice(0,10), client:'', projet:'', note_globale:8, commentaire:''
     }]).select();
     if (data) {
-      try { await logAction('qualite_satisfaction', data[0]?.id, 'CREATE', {}); } catch {}
+      try { await logAction('qualite_satisfaction', data[0]?.id, 'CREATE', {}); } catch { /* silencieux : non bloquant */ }
       loadAll();
     }
   };
@@ -169,7 +169,7 @@ export default function QualiteAudits() {
       effectif_total:10, reponses:0, note_moyenne:5
     }]).select();
     if (data) {
-      try { await logAction('qualite_qvt', data[0]?.id, 'CREATE', { campagne: 'Sondage QVT' }); } catch {}
+      try { await logAction('qualite_qvt', data[0]?.id, 'CREATE', { campagne: 'Sondage QVT' }); } catch { /* silencieux : non bloquant */ }
       loadAll();
     }
   };
@@ -177,7 +177,7 @@ export default function QualiteAudits() {
   const deleteRow = async (table, id) => {
     if (!confirm('Supprimer cette ligne ?')) return;
     await supabase.from(table).delete().eq('id', id);
-    try { await logAction(table, id, 'DELETE', {}); } catch {}
+    try { await logAction(table, id, 'DELETE', {}); } catch { /* silencieux : non bloquant */ }
     loadAll();
   };
 
@@ -335,7 +335,7 @@ export default function QualiteAudits() {
                           {row.score > 0 && <JaugeScore score={Number(row.score)}/>}
                         </div>
                       </td>
-                      <td><button onClick={()=>deleteRow('qualite_audits',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></td>
+                      <td><WriteOnly><button onClick={()=>deleteRow('qualite_audits',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></WriteOnly></td>
                     </tr>
                   );
                 })}
@@ -376,7 +376,7 @@ export default function QualiteAudits() {
                         {STATUTS_NC.map(s=><option key={s}>{s}</option>)}
                       </select>
                     </td>
-                    <td><button onClick={()=>deleteRow('qualite_nc',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></td>
+                    <td><WriteOnly><button onClick={()=>deleteRow('qualite_nc',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></WriteOnly></td>
                   </tr>
                 ))}
                 {!ncs.length && <tr><td colSpan={8} style={{ textAlign:'center', color:p.text3, padding:24 }}>Aucune NC — cliquez sur Ajouter</td></tr>}
@@ -409,7 +409,7 @@ export default function QualiteAudits() {
                       </div>
                     </td>
                     <td><input type="text" value={row.commentaire||''} onChange={e=>upSat(row.id,'commentaire',e.target.value)} onBlur={()=>saveSat(satisfaction.find(s=>s.id===row.id))} className="input-modern" style={{...inputStyle,width:200}} placeholder="Commentaire..."/></td>
-                    <td><button onClick={()=>deleteRow('qualite_satisfaction',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></td>
+                    <td><WriteOnly><button onClick={()=>deleteRow('qualite_satisfaction',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></WriteOnly></td>
                   </tr>
                 ))}
                 {!satisfaction.length && <tr><td colSpan={6} style={{ textAlign:'center', color:p.text3, padding:24 }}>Aucune enquête</td></tr>}
@@ -459,7 +459,7 @@ export default function QualiteAudits() {
                           <span style={{ fontWeight:800, color:Number(row.note_moyenne)>=7?'#10B981':Number(row.note_moyenne)>=5?'#F59E0B':'#EF4444' }}>{row.note_moyenne}/10</span>
                         </div>
                       </td>
-                      <td><button onClick={()=>deleteRow('qualite_qvt',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></td>
+                      <td><WriteOnly><button onClick={()=>deleteRow('qualite_qvt',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></WriteOnly></td>
                     </tr>
                   );
                 })}

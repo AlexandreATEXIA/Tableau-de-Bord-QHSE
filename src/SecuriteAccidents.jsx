@@ -42,7 +42,7 @@ const STATUT_STYLE = {
 };
 
 export default function SecuriteAccidents() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const { toast } = useToast();
   const { config } = useConfig();
   const [accidents, setAccidents]   = useState([]);
@@ -80,7 +80,7 @@ export default function SecuriteAccidents() {
   const sauvegarderLigne = async (row) => {
     setSaving(row.id);
     await supabase.from('securite_accidents').update(row).eq('id', row.id);
-    try { await logAction('securite_accidents', row.id, 'UPDATE', { type: row.type_evenement, statut: row.statut_enquete }); } catch {}
+    try { await logAction('securite_accidents', row.id, 'UPDATE', { type: row.type_evenement, statut: row.statut_enquete }); } catch { /* silencieux : non bloquant */ }
     setSaving(null);
   };
 
@@ -96,7 +96,7 @@ export default function SecuriteAccidents() {
       return;
     }
     if (data) {
-      try { await logAction('securite_accidents', data[0]?.id, 'CREATE', { type: payload.type_evenement, date: payload.date_evenement, lieu: payload.lieu }); } catch {}
+      try { await logAction('securite_accidents', data[0]?.id, 'CREATE', { type: payload.type_evenement, date: payload.date_evenement, lieu: payload.lieu }); } catch { /* silencieux : non bloquant */ }
       setAccidents([data[0], ...accidents]);
       setShowForm(false);
       setForm({ date_evenement: new Date().toISOString().split('T')[0], type_evenement: "Presqu'accident", lieu: 'Atelier', description: '', cause_immediate: [], victime: '', temoin: '', jours_perdus: 0, statut_enquete: 'À lancer', mesures_immediates: '', actions_correctives: '' });
@@ -106,7 +106,7 @@ export default function SecuriteAccidents() {
 
   const deleteRow = async (id) => {
     await supabase.from('securite_accidents').delete().eq('id', id);
-    try { await logAction('securite_accidents', id, 'DELETE', {}); } catch {}
+    try { await logAction('securite_accidents', id, 'DELETE', {}); } catch { /* silencieux : non bloquant */ }
     setAccidents(accidents.filter(a => a.id !== id));
     toast({ message: 'Événement supprimé définitivement', type: 'info' });
   };
@@ -115,13 +115,13 @@ export default function SecuriteAccidents() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('securite_accidents').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
-    try { await logAction('securite_accidents', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
+    try { await logAction('securite_accidents', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch { /* silencieux : non bloquant */ }
     setAccidents(prev => prev.map(a => a.id === id ? { ...a, archived_at: now } : a));
     toast({ message: 'Événement archivé', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('securite_accidents').update({ archived_at: null, archived_by: null }).eq('id', id);
-    try { await logAction('securite_accidents', id, 'RESTORE', {}); } catch {}
+    try { await logAction('securite_accidents', id, 'RESTORE', {}); } catch { /* silencieux : non bloquant */ }
     setAccidents(prev => prev.map(a => a.id === id ? { ...a, archived_at: null } : a));
     toast({ message: 'Événement restauré', type: 'success' });
   };
@@ -380,10 +380,10 @@ export default function SecuriteAccidents() {
                       {showArchive ? (
                         <>
                           <button onClick={() => restoreRow(row.id)} title="Restaurer" className="text-green-500 hover:text-green-400 transition-colors p-1.5 rounded hover:bg-white/5"><RotateCcw size={15}/></button>
-                          <button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-white/5"><Trash2 size={15}/></button>
+                          <WriteOnly><button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-white/5"><Trash2 size={15}/></button></WriteOnly>
                         </>
                       ) : (
-                        <button onClick={() => archiveRow(row.id)} title="Archiver" className="text-slate-600 hover:text-amber-400 transition-colors p-1.5 rounded hover:bg-white/5"><Archive size={15}/></button>
+                        <WriteOnly><button onClick={() => archiveRow(row.id)} title="Archiver" className="text-slate-600 hover:text-amber-400 transition-colors p-1.5 rounded hover:bg-white/5"><Archive size={15}/></button></WriteOnly>
                       )}
                     </div>
                   </div>

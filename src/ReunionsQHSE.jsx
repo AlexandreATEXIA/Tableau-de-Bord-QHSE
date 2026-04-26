@@ -4,6 +4,7 @@ import { useToast } from './ToastContext';
 import { supabase } from './supabaseClient';
 import ConfirmModal from './ConfirmModal';
 import { logAction } from './auditLog';
+import { WriteOnly } from './WriteGuard';
 import {
   Plus, Trash2, RefreshCw, Save, X, MessageSquare, Users, Calendar,
   FileText, ChevronDown, ChevronRight, CheckCircle, AlertTriangle,
@@ -37,7 +38,7 @@ const ACTION_INIT = { description: '', responsable: '', echeance: '', statut: '�
 
 /* ─── Composant principal ───────────────────────────────────────────────────── */
 export default function ReunionsQHSE() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const toast = useToast();
 
   const [reunions, setReunions]   = useState([]);
@@ -81,7 +82,7 @@ export default function ReunionsQHSE() {
       .select();
     if (error) { toast.error('Erreur : ' + error.message); return; }
     if (data) {
-      try { await logAction('reunions_qhse', data[0]?.id, 'CREATE', { type: form.type, date: form.date }); } catch {}
+      try { await logAction('reunions_qhse', data[0]?.id, 'CREATE', { type: form.type, date: form.date }); } catch { /* silencieux : non bloquant */ }
       setReunions(prev => [data[0], ...prev]);
       setActionsReu(prev => ({ ...prev, [data[0].id]: [] }));
       setShowForm(false);
@@ -97,7 +98,7 @@ export default function ReunionsQHSE() {
     const { error } = await supabase.from('reunions_qhse').update(data).eq('id', id);
     if (error) toast.error('Erreur sauvegarde : ' + error.message);
     else {
-      try { await logAction('reunions_qhse', id, 'UPDATE', { type: row.type, statut: row.statut }); } catch {}
+      try { await logAction('reunions_qhse', id, 'UPDATE', { type: row.type, statut: row.statut }); } catch { /* silencieux : non bloquant */ }
       toast.success('Réunion enregistrée');
     }
     setSaving(null);
@@ -115,7 +116,7 @@ export default function ReunionsQHSE() {
       onConfirm: async () => {
         const { error } = await supabase.from('reunions_qhse').delete().eq('id', id);
         if (error) { toast.error('Erreur : ' + error.message); return; }
-        try { await logAction('reunions_qhse', id, 'DELETE', { label }); } catch {}
+        try { await logAction('reunions_qhse', id, 'DELETE', { label }); } catch { /* silencieux : non bloquant */ }
         setReunions(prev => prev.filter(r => r.id !== id));
         toast.success('Réunion supprimée');
       },
@@ -169,7 +170,7 @@ export default function ReunionsQHSE() {
 
     const { error } = await supabase.from('plan_actions').insert(toInsert);
     if (error) { toast.error('Erreur envoi PDCA : ' + error.message); return; }
-    try { await logAction('plan_actions', reunionId, 'CREATE', { source: 'reunion', count: actions.length, reunion_type: reunion.type, reunion_date: reunion.date }); } catch {}
+    try { await logAction('plan_actions', reunionId, 'CREATE', { source: 'reunion', count: actions.length, reunion_type: reunion.type, reunion_date: reunion.date }); } catch { /* silencieux : non bloquant */ }
     toast.success(`${actions.length} action(s) envoyée(s) au Plan d'Actions`);
   };
 
@@ -269,7 +270,7 @@ ${actions.length > 0 ? `
         </div>
         <div className="flex gap-3">
           <button onClick={fetchReunions} className="btn-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''}/> Actualiser</button>
-          <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouvelle réunion</button>
+          <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={16}/> Nouvelle réunion</button></WriteOnly>
         </div>
       </header>
 
@@ -309,7 +310,7 @@ ${actions.length > 0 ? `
         <div className="glass-panel flex flex-col items-center justify-center h-40 gap-3">
           <MessageSquare size={36} style={{ color: p.text4 }}/>
           <p style={{ color: p.text3, fontSize: 13 }}>Aucune réunion enregistrée</p>
-          <button onClick={() => setShowForm(true)} className="btn-primary text-sm"><Plus size={14}/> Créer la première</button>
+          <WriteOnly><button onClick={() => setShowForm(true)} className="btn-primary text-sm"><Plus size={14}/> Créer la première</button></WriteOnly>
         </div>
       ) : (
         <div className="space-y-3">
@@ -367,9 +368,9 @@ ${actions.length > 0 ? `
                     <button onClick={() => saveRow(r)} title="Enregistrer" style={{ padding: '5px 8px', background: p.bgCard2, border: '1px solid ' + p.border, borderRadius: 6, cursor: 'pointer', color: p.blue, display: 'flex' }}>
                       {saving === r.id ? <RefreshCw size={14} className="animate-spin"/> : <Save size={14}/>}
                     </button>
-                    <button onClick={() => deleteRow(r.id, `${r.type} du ${r.date}`)} title="Supprimer" style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, cursor: 'pointer', color: '#EF4444', display: 'flex' }}>
+                    <WriteOnly><button onClick={() => deleteRow(r.id, `${r.type} du ${r.date}`)} title="Supprimer" style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, cursor: 'pointer', color: '#EF4444', display: 'flex' }}>
                       <Trash2 size={14}/>
-                    </button>
+                    </button></WriteOnly>
                   </div>
                 </div>
 

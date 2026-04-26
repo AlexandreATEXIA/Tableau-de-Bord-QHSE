@@ -25,7 +25,7 @@ function getLocal() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
 function saveLocal(entries) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(-MAX_LOCAL))); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(-MAX_LOCAL))); } catch { /* silencieux : non bloquant */ }
 }
 // Étape E8 — Identité nominative dans l'audit log.
 // Ordre de priorité pour identifier l'utilisateur :
@@ -75,7 +75,7 @@ export async function logAction(tableName, recordId, action, details = {}, userN
       details:    entry.details,
       user_name:  entry.user_name,
     }]);
-  } catch {}
+  } catch { /* silencieux : non bloquant */ }
 
   const local = getLocal();
   local.push(entry);

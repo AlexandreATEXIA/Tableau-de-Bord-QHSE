@@ -268,7 +268,7 @@ function TabExport({ userEmail }) {
           articles: 'Art. 15 + 20',
           tables_incluses: Object.keys(TABLES_LIEES_PERSONNE),
         }, userEmail);
-      } catch {}
+      } catch { /* silencieux : non bloquant */ }
 
       setMessage({ type: 'ok', texte: `Export JSON généré (${Object.keys(bundle.donnees).length} tables).` });
     } catch (e) {
@@ -422,7 +422,7 @@ function TabAnonymiser({ userEmail }) {
           article: 'Art. 17 (droit à l\'effacement)',
           personne_ex: nomComplet,
         }, userEmail);
-      } catch {}
+      } catch { /* silencieux : non bloquant */ }
 
       setMessage({ type: 'ok', texte: `Personne anonymisée sur toutes les tables. L'audit ISO reste intact (les lignes sont préservées, identifiants masqués).` });
       setConfirmOpen(false);
@@ -636,7 +636,7 @@ function LigneDemande({ demande, userEmail, onUpdate }) {
         ancien_statut: demande.statut,
         nouveau_statut: nouveauStatut,
       }, userEmail);
-    } catch {}
+    } catch { /* silencieux : non bloquant */ }
     setReponseOpen(false);
     setReponse('');
     onUpdate();
@@ -754,7 +754,7 @@ function FormNouvelleDemande({ onClose, onSuccess, userEmail }) {
       await logAction('rgpd_demandes', data?.id, 'CREATE', {
         type, personne: nom,
       }, userEmail);
-    } catch {}
+    } catch { /* silencieux : non bloquant */ }
     onSuccess();
   };
 

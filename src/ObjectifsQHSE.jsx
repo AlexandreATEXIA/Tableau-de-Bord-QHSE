@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import { useTheme } from './ThemeContext';
 import { useConfig } from './ConfigContext';
 import { tauxAtteinteObjectif } from './utils/kpi';
+import { WriteOnly } from './WriteGuard';
 import {
   Target, Plus, Edit2, Trash2, Save, X, CheckCircle,
   AlertTriangle, TrendingUp, TrendingDown, ShieldAlert,
@@ -168,8 +169,10 @@ function ObjectifRow({ obj, cat, isDark, p, onEdit, onDelete, onSaveVal, getPct,
             </div>
             <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
               <BadgeStatut statut={statut}/>
-              <button onClick={()=>onEdit(obj)} style={{ background:'none', border:'none', cursor:'pointer', color:p.text3, padding:4 }}><Edit2 size={13}/></button>
-              <button onClick={()=>onDelete(obj.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={13}/></button>
+              <WriteOnly>
+                <button onClick={()=>onEdit(obj)} style={{ background:'none', border:'none', cursor:'pointer', color:p.text3, padding:4 }}><Edit2 size={13}/></button>
+                <button onClick={()=>onDelete(obj.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={13}/></button>
+              </WriteOnly>
             </div>
           </div>
 
@@ -398,9 +401,9 @@ export default function ObjectifsQHSE() {
           <button onClick={() => { chargerObjectifs(); chargerDonneesReelles(); }} className="btn-secondary">
             <RefreshCw size={14}/> Actualiser
           </button>
-          <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary">
+          <WriteOnly><button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary">
             <Plus size={14}/> Nouvel objectif
-          </button>
+          </button></WriteOnly>
         </div>
       </div>
 

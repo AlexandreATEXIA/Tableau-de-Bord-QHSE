@@ -34,7 +34,7 @@ function getHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
 }
 function saveHistory(h) {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, MAX_HISTORY))); } catch {}
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, MAX_HISTORY))); } catch { /* silencieux : non bloquant */ }
 }
 
 const loadXLSX = () => new Promise(resolve => {
@@ -53,7 +53,7 @@ function fmt(v) {
 }
 
 export default function ArchivesExport() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [tab, setTab]             = useState('export');
   const [counts, setCounts]       = useState({});
   const [loading, setLoading]     = useState(false);

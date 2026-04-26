@@ -1,6 +1,7 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
+import { WriteOnly } from './WriteGuard';
 import {
   RefreshCw, TrendingDown, TrendingUp, Target, Shield, Activity,
   AlertTriangle, CheckCircle, Info, Settings, Save, BarChart2
@@ -15,7 +16,7 @@ import { diffJours, safeNumber, calcExpiration } from './utils/kpi';
 const OBJ_DEFAULTS = { TF:10, TG:1, tauxCloture:70, tauxHabs:90, tauxMaitrise:70, accArret:0, actionsRetard:0, satisfaction:7 };
 
 export default function KPIsSecurite() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const { config, saveConfig } = useConfig();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
@@ -307,7 +308,7 @@ export default function KPIsSecurite() {
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={()=>setShowObj(false)} className="btn-secondary">Annuler</button>
-            <button onClick={sauvegarderObjectifs} className="btn-primary"><Save size={14}/> Sauvegarder les objectifs</button>
+            <WriteOnly><button onClick={sauvegarderObjectifs} className="btn-primary"><Save size={14}/> Sauvegarder les objectifs</button></WriteOnly>
           </div>
         </div>
       )}

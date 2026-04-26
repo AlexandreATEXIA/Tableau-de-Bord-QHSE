@@ -50,7 +50,7 @@ export default function JournalAudit() {
         .order('created_at', { ascending: false })
         .limit(500);
       if (!error && data?.length > 0) { entries = data; src = 'supabase'; }
-    } catch {}
+    } catch { /* silencieux : non bloquant */ }
 
     setLogs(entries);
     setSource(src);

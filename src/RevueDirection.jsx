@@ -19,7 +19,7 @@ function getStatutColor(val, seuil1, seuil2, inverse = false) {
 }
 
 export default function RevueDirection() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const { config } = useConfig();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);

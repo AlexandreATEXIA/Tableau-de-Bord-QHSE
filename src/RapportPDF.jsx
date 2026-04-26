@@ -60,7 +60,7 @@ function buildHTML(data, opts, cfg) {
 
   const scoreGlobal  = Math.round((Math.max(0, 100 - safeNumber(TF, 0)*5) + tauxPDCA + tauxHabs + (risques.length > 0 ? Math.round((risqAcc.length/risques.length)*100) : 100)) / 4);
   const scoreColor   = scoreGlobal >= 80 ? '#10B981' : scoreGlobal >= 60 ? '#F59E0B' : '#EF4444';
-  const scoreLabel   = scoreGlobal >= 80 ? 'Excellent' : scoreGlobal >= 60 ? 'Satisfaisant' : 'À améliorer';
+  // scoreLabel retiré (variable morte — ESLint cleanup).
 
   const periodLabel  = opts.periode === 'mensuel' ? `Mois de ${new Date().toLocaleDateString('fr-FR', { month:'long', year:'numeric' })}` :
                        opts.periode === 'trimestriel' ? `T${Math.ceil((new Date().getMonth()+1)/3)} ${new Date().getFullYear()}` :
@@ -73,8 +73,7 @@ function buildHTML(data, opts, cfg) {
       <div style="font-size:24px;font-weight:900;color:#0F172A">${val}</div>
     </div>`;
 
-  const badge = (txt, color, bg) =>
-    `<span style="display:inline-block;padding:2px 9px;border-radius:100px;font-size:10px;font-weight:700;background:${bg};color:${color};border:1px solid ${color}40">${txt}</span>`;
+  // badge retiré (helper non utilisé dans la génération PDF actuelle — ESLint cleanup).
 
   const sectionTitle = (icon, title, color) =>
     `<h2 style="font-size:15px;font-weight:800;color:#1E3A5F;border-left:4px solid ${color};padding-left:12px;margin:28px 0 14px">${icon} ${title}</h2>`;
@@ -163,7 +162,7 @@ ${accidents.map(a => `<tr><td>${a.date_evenement || ''}</td><td>${a.type_eveneme
     const actAff = opts.toutesActions ? actions : [...actRetard, ...actions.filter(a => statAct(a) === 'imminent'), ...actions.filter(a => !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé') && statAct(a) === 'ok')].slice(0, 20);
     if (actAff.length > 0) {
       html += `<table><thead><tr><th>Domaine</th><th>Action</th><th>Pilote</th><th>Échéance</th><th>Priorité</th><th>Statut</th></tr></thead><tbody>
-${actAff.map(a => { const st = statAct(a); return `<tr><td>${a.domaine || ''}</td><td>${(a.action || '').substring(0, 55)}</td><td>${a.pilote || ''}</td><td style="color:${st === 'retard' ? '#EF4444' : st === 'imminent' ? '#F59E0B' : '#334155'};font-weight:${st !== 'ok' ? '700' : '400'}">${a.echeance || ''}</td><td>${a.priorite?.replace(/[🔴🟠🟡🟢]/g, '').trim() || ''}</td><td>${a.statut?.replace(/[🔴🟠🟣🟢⚪]/g, '').trim() || ''}</td></tr>`; }).join('')}
+${actAff.map(a => { const st = statAct(a); return `<tr><td>${a.domaine || ''}</td><td>${(a.action || '').substring(0, 55)}</td><td>${a.pilote || ''}</td><td style="color:${st === 'retard' ? '#EF4444' : st === 'imminent' ? '#F59E0B' : '#334155'};font-weight:${st !== 'ok' ? '700' : '400'}">${a.echeance || ''}</td><td>${a.priorite?.replace(/[🔴🟠🟡🟢]/gu, '').trim() || ''}</td><td>${a.statut?.replace(/[🔴🟠🟣🟢⚪]/gu, '').trim() || ''}</td></tr>`; }).join('')}
 </tbody></table>`;
     }
   }
@@ -256,7 +255,7 @@ const SECTIONS = [
 ];
 
 export default function RapportPDF() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [loading, setLoading]   = useState(false);
   const [success, setSuccess]   = useState(false);
   const [typeRapport, setType]  = useState('mensuel');

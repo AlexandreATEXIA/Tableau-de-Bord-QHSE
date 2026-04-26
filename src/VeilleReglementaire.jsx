@@ -1,6 +1,7 @@
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import { WriteOnly } from './WriteGuard';
 import {
   BookOpen, RefreshCw, ExternalLink, CheckCircle, AlertTriangle,
   Clock, Filter, Plus, Save, Trash2, Archive, Eye, EyeOff, Zap
@@ -41,7 +42,7 @@ const TEXTES_REF = [
 ];
 
 export default function VeilleReglementaire() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [textes, setTextes]               = useState([]);
   const [loading, setLoading]             = useState(true);
   const [veilleLoading, setVeilleLoading] = useState(false);
@@ -156,9 +157,9 @@ export default function VeilleReglementaire() {
             <Zap size={16} className={veilleLoading ? 'animate-pulse' : ''} />
             {veilleLoading ? 'Recherche en cours...' : 'Lancer la veille auto'}
           </button>
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+          <WriteOnly><button onClick={() => setShowForm(!showForm)} className="btn-primary">
             <Plus size={16} /> Ajouter un texte
-          </button>
+          </button></WriteOnly>
         </div>
       </header>
 
@@ -346,16 +347,18 @@ export default function VeilleReglementaire() {
                         {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                       <input type="text" value={texte.notes || ''} onChange={e => updateStatut(texte.id, texte.statut, e.target.value)} placeholder="Notes internes..." className="input-modern flex-1" style={{ padding: '5px 12px', fontSize: 12 }} />
-                      <button
-                        onClick={() => archiverTexte(texte.id, !texte.archive)}
-                        title={texte.archive ? 'Désarchiver' : 'Archiver'}
-                        className="text-slate-500 hover:text-purple-400 transition-colors p-1.5 rounded-lg hover:bg-white/5"
-                      >
-                        <Archive size={16} />
-                      </button>
-                      <button onClick={() => supprimerTexte(texte.id)} className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5">
-                        <Trash2 size={16} />
-                      </button>
+                      <WriteOnly>
+                        <button
+                          onClick={() => archiverTexte(texte.id, !texte.archive)}
+                          title={texte.archive ? 'Désarchiver' : 'Archiver'}
+                          className="text-slate-500 hover:text-purple-400 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+                        >
+                          <Archive size={16} />
+                        </button>
+                        <button onClick={() => supprimerTexte(texte.id)} className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5">
+                          <Trash2 size={16} />
+                        </button>
+                      </WriteOnly>
                     </div>
                   </div>
                 </div>

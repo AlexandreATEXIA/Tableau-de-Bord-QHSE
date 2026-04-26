@@ -174,13 +174,13 @@ export default function PlanActions() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('plan_actions').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
-    try { await logAction('plan_actions', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
+    try { await logAction('plan_actions', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch { /* silencieux : non bloquant */ }
     setActions(prev => prev.map(a => a.id === id ? { ...a, archived_at: now } : a));
     toast({ message: 'Action archivée', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('plan_actions').update({ archived_at: null, archived_by: null }).eq('id', id);
-    try { await logAction('plan_actions', id, 'RESTORE', {}); } catch {}
+    try { await logAction('plan_actions', id, 'RESTORE', {}); } catch { /* silencieux : non bloquant */ }
     setActions(prev => prev.map(a => a.id === id ? { ...a, archived_at: null } : a));
     toast({ message: 'Action restaurée', type: 'success' });
   };
@@ -207,7 +207,7 @@ export default function PlanActions() {
       resultat_efficacite: row.resultat_efficacite,
       commentaire: row.commentaire,
     }).eq('id', row.id);
-    try { await logAction('plan_actions', row.id, 'UPDATE', { statut: row.statut, avancement: Number(row.avancement_pct || 0), pilote: row.pilote }); } catch {}
+    try { await logAction('plan_actions', row.id, 'UPDATE', { statut: row.statut, avancement: Number(row.avancement_pct || 0), pilote: row.pilote }); } catch { /* silencieux : non bloquant */ }
     setSaving(null);
   };
 
@@ -250,7 +250,7 @@ export default function PlanActions() {
       return;
     }
     if (data?.[0]) {
-      try { await logAction('plan_actions', data[0].id, 'CREATE', { origine: form.origine, domaine: form.domaine, action: form.action, pilote: form.pilote }); } catch {}
+      try { await logAction('plan_actions', data[0].id, 'CREATE', { origine: form.origine, domaine: form.domaine, action: form.action, pilote: form.pilote }); } catch { /* silencieux : non bloquant */ }
       setActions(prev => [...prev, data[0]]);
       setShowForm(false);
       setForm(mkForm(listeDomaines, listeOrigines));
@@ -262,7 +262,7 @@ export default function PlanActions() {
   const deleteRow = async (id) => {
     if (!window.confirm('Supprimer cette action ?')) return;
     await supabase.from('plan_actions').delete().eq('id', id);
-    try { await logAction('plan_actions', id, 'DELETE', {}); } catch {}
+    try { await logAction('plan_actions', id, 'DELETE', {}); } catch { /* silencieux : non bloquant */ }
     setActions(prev => prev.filter(r => r.id !== id));
     toast({ message: 'Action supprimée', type: 'info' });
   };
@@ -703,9 +703,9 @@ export default function PlanActions() {
                           : showArchive
                             ? <div style={{ display:'flex', gap:2, justifyContent:'center' }}>
                                 <button onClick={() => restoreRow(row.id)} title="Restaurer" style={{ color:'#10B981', background:'none', border:'none', cursor:'pointer', padding:5 }}><RotateCcw size={13}/></button>
-                                <button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" style={{ color:'#EF4444', background:'none', border:'none', cursor:'pointer', padding:5 }}><Trash2 size={13}/></button>
+                                <WriteOnly><button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" style={{ color:'#EF4444', background:'none', border:'none', cursor:'pointer', padding:5 }}><Trash2 size={13}/></button></WriteOnly>
                               </div>
-                            : <button onClick={() => archiveRow(row.id)} title="Archiver" style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-blue-400"><Archive size={14}/></button>
+                            : <WriteOnly><button onClick={() => archiveRow(row.id)} title="Archiver" style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-blue-400"><Archive size={14}/></button></WriteOnly>
                         }
                       </td>
                     </tr>

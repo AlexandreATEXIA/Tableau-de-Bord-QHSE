@@ -294,7 +294,7 @@ async function enrichirListesDepuisImport(rows, mapping) {
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 export default function ImportExcel() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [dragging, setDragging]   = useState(false);
   const [fichier, setFichier]     = useState(null);
   const [apercu, setApercu]       = useState(null);

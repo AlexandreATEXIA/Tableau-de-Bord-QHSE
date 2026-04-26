@@ -145,13 +145,13 @@ export default function RegistreDUERP() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('registre_duerp').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
-    try { await logAction('registre_duerp', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
+    try { await logAction('registre_duerp', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch { /* silencieux : non bloquant */ }
     setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: now } : r));
     toast({ message: 'Risque archivé dans l\'historique', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('registre_duerp').update({ archived_at: null, archived_by: null }).eq('id', id);
-    try { await logAction('registre_duerp', id, 'RESTORE', {}); } catch {}
+    try { await logAction('registre_duerp', id, 'RESTORE', {}); } catch { /* silencieux : non bloquant */ }
     setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: null } : r));
     toast({ message: 'Risque restauré', type: 'success' });
   };
@@ -198,7 +198,7 @@ export default function RegistreDUERP() {
     setSaving(null);
     if (error) toast({ message: `Erreur sauvegarde : ${error.message}`, type: 'error' });
     else {
-      try { await logAction('registre_duerp', rowData.id, 'UPDATE', { unite: rowData.unite_travail, criticite_resid: rowData.criticite_resid }); } catch {}
+      try { await logAction('registre_duerp', rowData.id, 'UPDATE', { unite: rowData.unite_travail, criticite_resid: rowData.criticite_resid }); } catch { /* silencieux : non bloquant */ }
       toast({ message: 'Risque sauvegardé', type: 'success' });
     }
   };
@@ -254,7 +254,7 @@ export default function RegistreDUERP() {
       return;
     }
     if (data?.[0]) {
-      try { await logAction('registre_duerp', data[0].id, 'CREATE', { unite: form.unite_travail, famille: form.famille_risque, danger: form.danger, criticite_resid: cr }); } catch {}
+      try { await logAction('registre_duerp', data[0].id, 'CREATE', { unite: form.unite_travail, famille: form.famille_risque, danger: form.danger, criticite_resid: cr }); } catch { /* silencieux : non bloquant */ }
       setRisques(prev => [...prev, data[0]].sort((a, b) => (b.criticite_resid || b.criticite || 1) - (a.criticite_resid || a.criticite || 1)));
       setShowForm(false);
       setForm({ ...FORM_INIT, unite_travail: listeUT[0] });
@@ -266,7 +266,7 @@ export default function RegistreDUERP() {
   const deleteRow = async (id) => {
     if (!window.confirm('Supprimer ce risque définitivement ?')) return;
     await supabase.from('registre_duerp').delete().eq('id', id);
-    try { await logAction('registre_duerp', id, 'DELETE', {}); } catch {}
+    try { await logAction('registre_duerp', id, 'DELETE', {}); } catch { /* silencieux : non bloquant */ }
     setRisques(prev => prev.filter(r => r.id !== id));
     toast({ message: 'Risque supprimé', type: 'info' });
   };
@@ -850,9 +850,9 @@ export default function RegistreDUERP() {
                           : showArchive
                             ? <div style={{ display:'flex', gap:2, justifyContent:'center' }}>
                                 <button onClick={() => restoreRow(row.id)} title="Restaurer" style={{ color:'#10B981', background:'none', border:'none', cursor:'pointer', padding:5 }}><RotateCcw size={13}/></button>
-                                <button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" style={{ color:'#EF4444', background:'none', border:'none', cursor:'pointer', padding:5 }}><Trash2 size={13}/></button>
+                                <WriteOnly><button onClick={() => deleteRow(row.id)} title="Supprimer définitivement" style={{ color:'#EF4444', background:'none', border:'none', cursor:'pointer', padding:5 }}><Trash2 size={13}/></button></WriteOnly>
                               </div>
-                            : <button onClick={() => archiveRow(row.id)} title="Archiver" style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-amber-400"><Archive size={14}/></button>
+                            : <WriteOnly><button onClick={() => archiveRow(row.id)} title="Archiver" style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }} className="hover:text-amber-400"><Archive size={14}/></button></WriteOnly>
                         }
                       </td>
                     </tr>

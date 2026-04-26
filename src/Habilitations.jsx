@@ -50,7 +50,7 @@ function getStatut(obtention, validiteAns) {
 }
 
 export default function Habilitations() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [habs, setHabs]         = useState([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(null);
@@ -82,7 +82,7 @@ export default function Habilitations() {
     if (!row) return;
     setSaving(row.id);
     await supabase.from('habilitations').update(row).eq('id', row.id);
-    try { await logAction('habilitations', row.id, 'UPDATE', { employe: row.employe, domaine: row.domaine }); } catch {}
+    try { await logAction('habilitations', row.id, 'UPDATE', { employe: row.employe, domaine: row.domaine }); } catch { /* silencieux : non bloquant */ }
     setSaving(null);
   };
 
@@ -90,7 +90,7 @@ export default function Habilitations() {
     if (!form.employe.trim()) return;
     const { data } = await supabase.from('habilitations').insert([form]).select();
     if (data) {
-      try { await logAction('habilitations', data[0]?.id, 'CREATE', { employe: form.employe, domaine: form.domaine }); } catch {}
+      try { await logAction('habilitations', data[0]?.id, 'CREATE', { employe: form.employe, domaine: form.domaine }); } catch { /* silencieux : non bloquant */ }
       setHabs(prev => [...prev, data[0]].sort((a,b) => (a.employe||'').localeCompare(b.employe||'')));
       setShowForm(false);
     }
@@ -98,7 +98,7 @@ export default function Habilitations() {
 
   const deleteRow = async (id) => {
     await supabase.from('habilitations').delete().eq('id', id);
-    try { await logAction('habilitations', id, 'DELETE', {}); } catch {}
+    try { await logAction('habilitations', id, 'DELETE', {}); } catch { /* silencieux : non bloquant */ }
     setHabs(prev => prev.filter(r => r.id !== id));
   };
 
@@ -356,7 +356,7 @@ export default function Habilitations() {
                         </td>
                         <td className="text-center"><span style={{fontSize:12,fontWeight:600,color:st.color}}>{exp?.toLocaleDateString('fr-FR')||'—'}</span></td>
                         <td className="text-center"><span className={`badge ${st.badge}`}>{st.label}{st.j!==null&&st.j>=0?` · ${st.j}j`:''}</span></td>
-                        <td className="text-center">{saving===row.id ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/> : <button onClick={() => deleteRow(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button>}</td>
+                        <td className="text-center">{saving===row.id ? <RefreshCw size={13} className="animate-spin text-blue-400 mx-auto"/> : <WriteOnly><button onClick={() => deleteRow(row.id)} className="text-slate-600 hover:text-red-400 p-1.5 rounded"><Trash2 size={14}/></button></WriteOnly>}</td>
                       </tr>
                     );
                   })}

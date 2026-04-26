@@ -26,7 +26,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function Statistiques() {
-  const { p, isDark } = useTheme();
+  const { p } = useTheme();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [periode, setPeriode] = useState('annee'); // mois | trimestre | annee
