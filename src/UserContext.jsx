@@ -70,11 +70,32 @@ export function UserProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
+    // Timeout de sécurité : si supabase.auth.getSession() ou fetchRole hang
+    // (réseau lent, session expirée bloquée au refresh, etc.), on libère
+    // l'écran de loading après 10s plutôt que de laisser le spinner infini.
+    // L'utilisateur tombe sur LoginPage et peut se reconnecter pour repartir
+    // sur une session fraîche. Sans ce filet, le user devait vider son cache
+    // navigateur à chaque lancement.
+    const timeoutId = setTimeout(() => {
+      if (!mounted) return;
+      console.warn('[UserContext] Auth timeout (10s) — fallback à LoginPage');
+      setUser(null);
+      setRole(null);
+      setLoading(false);
+    }, 10000);
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
+      clearTimeout(timeoutId);
       const u = session?.user ?? null;
       setUser(u);
       await fetchRole(u);
+      setLoading(false);
+    }).catch(() => {
+      if (!mounted) return;
+      clearTimeout(timeoutId);
+      setUser(null);
+      setRole(null);
       setLoading(false);
     });
 
@@ -85,7 +106,7 @@ export function UserProvider({ children }) {
       await fetchRole(u);
     });
 
-    return () => { mounted = false; subscription.unsubscribe(); };
+    return () => { mounted = false; clearTimeout(timeoutId); subscription.unsubscribe(); };
   }, []);
 
   const displayName = user?.user_metadata?.prenom
