@@ -116,17 +116,20 @@ Cliquez **"Run"** (bouton vert en bas à droite ou Ctrl+Entrée).
 
 → Vous devez voir un message **"Success. No rows returned"** en vert. Si vous voyez du rouge, recommencez le copier-coller (oubli d'un caractère).
 
-### 2.3 — Appliquer les 5 migrations
+### 2.3 — Appliquer les 4 migrations
 
-Dans le ZIP de l'application que vous avez reçu, ouvrez le dossier `db/migrations/`. Vous y voyez 5 fichiers `.sql` :
+Dans le ZIP de l'application que vous avez reçu, ouvrez le dossier `db/migrations/`. Vous y voyez plusieurs fichiers `.sql`.
 
-1. `20260424000001_lot5_phase1_quickwins.sql`
-2. `20260424000002_lot6_phase1_rgpd_fondations.sql`
-3. `20260425000001_etape_b1_listes_referentiel.sql`
-4. `20260425000002_etape_e1_user_roles_auth.sql`
-5. `20260425000003_etape_e7_rls_tables_metier.sql`
+**Vous appliquerez UNIQUEMENT ces 4 fichiers, DANS L'ORDRE** :
 
-**Pour chacun de ces fichiers, dans l'ordre** :
+1. `00000000000000_baseline_schema.sql` ← **Le plus important — crée toutes les tables**
+2. `20260425000001_etape_b1_listes_referentiel.sql`
+3. `20260425000002_etape_e1_user_roles_auth.sql`
+4. `20260425000003_etape_e7_rls_tables_metier.sql`
+
+⚠️ **NE PAS appliquer les fichiers `20260424...`** — ils sont historiques (ajouts progressifs au schéma) et leurs apports sont déjà inclus dans le baseline.
+
+**Pour chacun des 4 fichiers ci-dessus, dans l'ordre** :
 
 1. Ouvrez-le dans un éditeur de texte (Notepad, TextEdit, VS Code…)
 2. **Sélectionnez tout** (Ctrl+A) puis **copiez** (Ctrl+C)
@@ -137,7 +140,7 @@ Dans le ZIP de l'application que vous avez reçu, ouvrez le dossier `db/migratio
 7. Attendez le message **"Success"** vert
 8. Passez au fichier suivant
 
-⏱️ Compter ~2 min par fichier, soit ~10 min pour les 5.
+⏱️ Compter ~2 min par fichier, soit **~8 min pour les 4**. Le 1er (baseline) est le plus long à exécuter (~30 secondes), les autres sont quasi-instantanés.
 
 ### 2.4 — Activer la synchronisation en temps réel
 

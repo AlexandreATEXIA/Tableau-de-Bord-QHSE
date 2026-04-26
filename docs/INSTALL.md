@@ -59,20 +59,21 @@ END;
 $$;
 ```
 
-### 2.2 — Migrations principales
+### 2.2 — Migrations principales (ordre obligatoire)
 
-Toujours dans le SQL Editor, copier-coller le contenu de chaque fichier dans cet ordre :
+Toujours dans le SQL Editor, copier-coller le contenu des **4 fichiers ci-dessous dans CET ORDRE** :
 
 ```
 db/migrations/
-├── 20260424000001_lot5_phase1_quickwins.sql
-├── 20260424000002_lot6_phase1_rgpd_fondations.sql
+├── 00000000000000_baseline_schema.sql           ← À APPLIQUER EN PREMIER
 ├── 20260425000001_etape_b1_listes_referentiel.sql
 ├── 20260425000002_etape_e1_user_roles_auth.sql
 └── 20260425000003_etape_e7_rls_tables_metier.sql
 ```
 
-⚠️ Si l'une des migrations échoue avec "table does not exist", c'est qu'une table métier (DUERP, plan_actions, etc.) n'a pas été créée par les premières migrations. Dans ce cas, vous devez créer ces tables via les **migrations originales** (récupérables auprès du fournisseur du code source) avant les fichiers ci-dessus.
+⚠️ **NE PAS appliquer `20260424000001` ni `20260424000002`** (lot5 et lot6) — leurs ajouts (colonnes RGPD, etc.) sont **déjà inclus** dans le baseline. Les exécuter sur une instance neuve après le baseline causerait des erreurs "column already exists".
+
+> Note historique : les fichiers `20260424*` sont conservés dans le repo pour traçabilité (qui a ajouté quoi et quand). Ils ne sont applicables que sur l'instance d'origine, pas sur une nouvelle instance.
 
 ### 2.3 — Vérification
 
