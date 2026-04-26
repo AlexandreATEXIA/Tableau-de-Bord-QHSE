@@ -13,6 +13,7 @@ import QuickActions from './QuickActions';
 import { useAlerteCounts } from './useAlerteCounts';
 import GestionUtilisateurs from './GestionUtilisateurs';
 import { useUser, ROLES } from './UserContext';
+import { useConfig } from './ConfigContext';
 
 import DashboardComex        from './DashboardComex';
 import RegistreDUERP         from './RegistreDUERP';
@@ -77,6 +78,7 @@ const MENU = [
 export default function App() {
   const { theme } = useTheme();
   const { role, canAccess, loading: userLoading, logout, displayName } = useUser();
+  const { config } = useConfig();
   const [activeTab, setActiveTab]     = useState('comex');
   const [animKey, setAnimKey]         = useState(0);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
@@ -194,7 +196,7 @@ export default function App() {
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <div style={{ width:42, height:42, background:'linear-gradient(135deg,rgba(79,99,231,0.3),rgba(16,185,129,0.2))', border:'1px solid rgba(79,99,231,0.4)', borderRadius:13, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🛡️</div>
             <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'var(--text-1)', letterSpacing:'-0.2px' }}>DEF Réunion</div>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--text-1)', letterSpacing:'-0.2px' }}>{config?.nom || 'SMI Dashboard'}</div>
               <div style={{ fontSize:10, fontWeight:700, color:'var(--blue)', letterSpacing:'0.06em', marginTop:2, textTransform:'uppercase' }}>SMI Dashboard Pro</div>
             </div>
           </div>
