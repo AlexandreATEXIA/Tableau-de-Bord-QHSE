@@ -397,22 +397,22 @@ export default function PlanActions({ prefill, onPrefillConsumed }) {
             <button onClick={() => setShowForm(false)} style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={18}/></button>
           </div>
 
-          {/* Bandeau contextuel DUERP — affiché quand le formulaire est pré-rempli */}
-          {form.origine === 'DUERP' && form.reference_source && (
+          {/* Bandeau contextuel — affiché quand le formulaire est pré-rempli depuis un module */}
+          {form.reference_source && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: isDark ? 'rgba(16,185,129,0.08)' : '#ECFDF5', border: '1px solid ' + (isDark ? 'rgba(16,185,129,0.25)' : '#A7F3D0'), borderRadius: 8, padding: '8px 14px', marginBottom: 16 }}>
               <ListPlus size={14} color={isDark ? '#34D399' : '#047857'}/>
               <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? '#34D399' : '#047857' }}>
-                Pré-rempli depuis le DUERP — {form.reference_source}
+                Pré-rempli depuis {form.origine} — {form.reference_source}
               </span>
             </div>
           )}
 
-          {/* ① Identification */}
+          {/* ① Événement déclencheur */}
           <div style={{ background: p.whiteFaint2, border: '1px solid ' + p.border, borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: p.blue, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>① Identification & Origine</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: p.blue, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>① Événement déclencheur</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label style={lbl}>Source de l'action</label>
+                <label style={lbl}>Source / Origine</label>
                 <select value={form.origine} onChange={e => setForm({ ...form, origine: e.target.value })} className="input-modern">
                   {listeOrigines.map(o => <option key={o}>{o}</option>)}
                 </select>
@@ -426,6 +426,21 @@ export default function PlanActions({ prefill, onPrefillConsumed }) {
                 <select value={form.domaine} onChange={e => setForm({ ...form, domaine: e.target.value })} className="input-modern">
                   {listeDomaines.map(d => <option key={d}>{d}</option>)}
                 </select>
+              </div>
+              <div className="md:col-span-3">
+                <label style={lbl}>Description de l'anomalie / Risque identifié</label>
+                <textarea rows={2} value={form.commentaire} onChange={e => setForm({ ...form, commentaire: e.target.value })} placeholder="Décrivez précisément le risque, l'anomalie ou l'événement à l'origine de cette action..." className="input-modern" style={{ resize: 'vertical' }}/>
+              </div>
+            </div>
+          </div>
+
+          {/* ② Résolution — Actions à mettre en place */}
+          <div style={{ background: p.whiteFaint2, border: '1px solid ' + p.border, borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: p.amber, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>② Résolution — Actions à mettre en place</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label style={lbl}>Action à mettre en place *</label>
+                <input type="text" value={form.action} onChange={e => setForm({ ...form, action: e.target.value })} placeholder="Décrivez précisément l'action corrective ou préventive à mener..." className="input-modern"/>
               </div>
               <div>
                 <label style={lbl}>Type d'action</label>
@@ -442,17 +457,6 @@ export default function PlanActions({ prefill, onPrefillConsumed }) {
                   })}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* ② Description & Déploiement */}
-          <div style={{ background: p.whiteFaint2, border: '1px solid ' + p.border, borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: p.amber, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>② Description & Déploiement</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label style={lbl}>Description de l'action *</label>
-                <input type="text" value={form.action} onChange={e => setForm({ ...form, action: e.target.value })} placeholder="Décrivez précisément l'action à mener..." className="input-modern"/>
-              </div>
               <div>
                 <label style={lbl}>Cause racine identifiée</label>
                 <input type="text" value={form.cause_racine} onChange={e => setForm({ ...form, cause_racine: e.target.value })} placeholder="Résultat 5 Pourquoi, Ishikawa..." className="input-modern"/>
@@ -460,10 +464,6 @@ export default function PlanActions({ prefill, onPrefillConsumed }) {
               <div>
                 <label style={lbl}>Pilote</label>
                 <input type="text" value={form.pilote} onChange={e => setForm({ ...form, pilote: e.target.value })} placeholder="Responsable de l'action..." className="input-modern"/>
-              </div>
-              <div className="md:col-span-2">
-                <label style={lbl}>Commentaire / Contexte</label>
-                <input type="text" value={form.commentaire} onChange={e => setForm({ ...form, commentaire: e.target.value })} placeholder="Informations complémentaires..." className="input-modern"/>
               </div>
             </div>
           </div>

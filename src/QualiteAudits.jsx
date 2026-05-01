@@ -5,7 +5,7 @@
    * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Save, Trash2, ClipboardCheck, AlertTriangle, Star, RefreshCw, Smile, CheckCircle, Clock, XCircle, BarChart2, Settings } from 'lucide-react';
+import { Plus, Save, Trash2, ClipboardCheck, AlertTriangle, Star, RefreshCw, Smile, CheckCircle, Clock, XCircle, BarChart2, Settings, ListPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import GestionListes from './GestionListes';
@@ -67,7 +67,24 @@ function JaugeScore({ score }) {
   );
 }
 
-export default function QualiteAudits() {
+function toNcPrefill(row) {
+  return {
+    origine:          'Non-conformité',
+    domaine:          'Qualité',
+    type_action:      'Corrective',
+    reference_source: [row.date_nc, row.processus ? `Processus : ${row.processus}` : ''].filter(Boolean).join(' · '),
+    commentaire:      row.description || '',
+    action:           row.action_corrective?.trim() || `Traitement NC ${row.type_nc || ''} — ${row.processus || ''}`.trim(),
+    cause_racine:     row.origine || '',
+    pilote:           '',
+    priorite:         row.type_nc === 'Critique' ? '🔴 Urgente' : row.type_nc === 'Majeure' ? '🟠 Haute' : '🟡 Normale',
+    statut:           'À lancer',
+    avancement_pct:   0,
+    resultat_efficacite: 'Non évalué',
+  };
+}
+
+export default function QualiteAudits({ onNavigateToPdca }) {
   const { p } = useTheme();
   const [subTab, setSubTab]   = useState('audits');
   const [_loading, setLoading] = useState(false);
@@ -381,7 +398,17 @@ export default function QualiteAudits() {
                         {STATUTS_NC.map(s=><option key={s}>{s}</option>)}
                       </select>
                     </td>
-                    <td><WriteOnly><button onClick={()=>deleteRow('qualite_nc',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></WriteOnly></td>
+                    <td>
+                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                        {onNavigateToPdca && (
+                          <button onClick={()=>onNavigateToPdca(toNcPrefill(row))} title="Créer une action dans le Plan d'Actions"
+                            style={{ color:'#10B981', background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:6, padding:'3px 7px', cursor:'pointer', display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:700 }}>
+                            <ListPlus size={13}/> Action
+                          </button>
+                        )}
+                        <WriteOnly><button onClick={()=>deleteRow('qualite_nc',row.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF4444', padding:4 }}><Trash2 size={14}/></button></WriteOnly>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {!ncs.length && <tr><td colSpan={8} style={{ textAlign:'center', color:p.text3, padding:24 }}>Aucune NC — cliquez sur Ajouter</td></tr>}

@@ -401,8 +401,8 @@ export default function App() {
           <div key={animKey} className="animate-fade-up">
             {activeTab === 'comex'         && <DashboardComex onNavigate={handleTab} />}
             {activeTab === 'duerp'         && <RegistreDUERP onNavigateToPdca={data => { setPrefillAction(data); handleTab('pdca'); }} />}
-            {activeTab === 'accidents'     && <SecuriteAccidents />}
-            {activeTab === 'qualite'       && <QualiteAudits />}
+            {activeTab === 'accidents'     && <SecuriteAccidents onNavigateToPdca={data => { setPrefillAction(data); handleTab('pdca'); }} />}
+            {activeTab === 'qualite'       && <QualiteAudits onNavigateToPdca={data => { setPrefillAction(data); handleTab('pdca'); }} />}
             {activeTab === 'env'           && <Environnement />}
             {activeTab === 'rh'            && <SocialRH />}
             {activeTab === 'pdca'          && <PlanActions prefill={prefillAction} onPrefillConsumed={() => setPrefillAction(null)} />}

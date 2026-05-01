@@ -5,7 +5,7 @@
    * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock, X, Save, ChevronDown, ChevronUp, Activity, Calendar, Archive, RotateCcw, History } from 'lucide-react';
+import { Plus, Trash2, HeartPulse, RefreshCw, AlertTriangle, CheckCircle, Clock, X, Save, ChevronDown, ChevronUp, Activity, Calendar, Archive, RotateCcw, History, ListPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
@@ -46,7 +46,25 @@ const STATUT_STYLE = {
   "Clôturée":           { color: '#10B981', badge: 'badge-green' },
 };
 
-export default function SecuriteAccidents() {
+function toAtPrefill(row) {
+  const isPresqu = row.type_evenement === "Presqu'accident";
+  return {
+    origine:          isPresqu ? "Presqu'accident / Incident" : 'Accident du travail',
+    domaine:          'Sécurité',
+    type_action:      'Corrective',
+    reference_source: `${row.date_evenement || ''} · ${row.type_evenement || ''} · ${row.lieu || ''}`.replace(/^[\s·]+|[\s·]+$/g, ''),
+    commentaire:      row.description || '',
+    action:           row.actions_correctives?.trim() || `Analyse et plan d'action : ${row.type_evenement}`,
+    cause_racine:     Array.isArray(row.cause_immediate) ? row.cause_immediate.join(' / ') : (row.cause_immediate || ''),
+    pilote:           '',
+    priorite:         row.type_evenement === 'Accident avec arrêt' ? '🔴 Urgente' : row.type_evenement === 'Soins (sans arrêt)' ? '🟠 Haute' : '🟡 Normale',
+    statut:           'À lancer',
+    avancement_pct:   0,
+    resultat_efficacite: 'Non évalué',
+  };
+}
+
+export default function SecuriteAccidents({ onNavigateToPdca }) {
   const { p } = useTheme();
   const { toast } = useToast();
   const { config } = useConfig();
@@ -379,6 +397,12 @@ export default function SecuriteAccidents() {
                     )}
                     <span className={`badge ${statutStyle.badge} shrink-0`}>{row.statut_enquete}</span>
                     <div className="flex items-center gap-1 shrink-0">
+                      {!showArchive && onNavigateToPdca && (
+                        <button onClick={() => onNavigateToPdca(toAtPrefill(row))} title="Créer une action dans le Plan d'Actions"
+                          style={{ color: '#10B981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '4px 7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}>
+                          <ListPlus size={13}/> Action
+                        </button>
+                      )}
                       <button onClick={() => setExpanded(isExpanded ? null : row.id)} className="text-slate-500 hover:text-white transition-colors p-1.5 rounded hover:bg-white/5">
                         {isExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                       </button>
