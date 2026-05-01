@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTheme } from './ThemeContext';
+import { useTheme, THEME_COLOR_DEFAULTS } from './ThemeContext';
 import { useParametres, PARAMS_DEFAULT } from './ParametresContext';
 import { useToast } from './ToastContext';
 import { useUser } from './UserContext';
@@ -31,7 +31,7 @@ function Field({ label, help, children }) {
 }
 
 export default function Parametres() {
-  const { p, theme, setTheme } = useTheme();
+  const { p, theme, setTheme, colorOverrides, setColorOverride, clearColorOverride, clearAllColorOverrides } = useTheme();
   const { params, saveParams } = useParametres();
   const toast = useToast();
   const { displayName, updateDisplayName } = useUser();
@@ -310,25 +310,99 @@ export default function Parametres() {
             </div>
           </Field>
 
-          <Field label="Thème de l'interface" help="Choisissez entre le mode sombre et le mode clair">
+          <Field label="Thème de base" help="Choisissez entre le mode sombre et le mode clair">
             <div style={{ display:'flex', gap:8 }}>
-              {[{ val:'dark', label:'🌙 Sombre', desc:'Fond très sombre' }, { val:'light', label:'☀️ Clair', desc:'Fond blanc / gris clair' }].map(({ val, label, desc }) => (
-                <button
-                  key={val}
-                  onClick={() => setTheme(val)}
+              {[{ val:'dark', label:'🌙 Sombre' }, { val:'light', label:'☀️ Clair' }].map(({ val, label }) => (
+                <button key={val} onClick={() => setTheme(val)}
                   style={{
-                    flex:1, padding:'12px 8px', borderRadius:10,
+                    flex:1, padding:'10px 8px', borderRadius:10,
                     border:`2px solid ${theme === val ? p.blue : p.border2}`,
                     background: theme === val ? (val === 'dark' ? 'rgba(59,130,246,0.1)' : 'rgba(79,99,231,0.08)') : p.whiteFaint,
                     color: theme === val ? p.blue : p.text3,
-                    fontWeight: theme === val ? 700 : 500, fontSize:13, cursor:'pointer',
-                    transition:'all 0.2s', textAlign:'center',
+                    fontWeight: theme === val ? 700 : 500, fontSize:13, cursor:'pointer', transition:'all 0.2s',
                   }}
-                >
-                  <div>{label}</div>
-                  <div style={{ fontSize:10, marginTop:3, opacity:0.7 }}>{desc}</div>
-                </button>
+                >{label}</button>
               ))}
+            </div>
+          </Field>
+
+          {/* ── Color pickers ── */}
+          <Field label="Couleurs personnalisées" help="Cliquez sur le carré coloré pour choisir la couleur. Le changement est immédiat.">
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {[
+                { key:'sidebar', label:'Sidebar', desc:'Menu de navigation à gauche' },
+                { key:'page',    label:'Contenu', desc:'Zone principale à droite' },
+              ].map(({ key, label, desc }) => {
+                const currentColor = colorOverrides[key] || THEME_COLOR_DEFAULTS[theme][key];
+                const hasOverride = !!colorOverrides[key];
+                return (
+                  <div key={key} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:p.whiteFaint2, border:`1px solid ${p.border}`, borderRadius:10 }}>
+                    {/* Swatch cliquable */}
+                    <label title={`Changer la couleur ${label}`} style={{ position:'relative', cursor:'pointer', flexShrink:0 }}>
+                      <div style={{ width:44, height:44, borderRadius:10, background:currentColor, border:`2.5px solid ${hasOverride ? p.blue : p.border2}`, boxShadow: hasOverride ? `0 0 0 3px ${p.blue}28` : 'none', transition:'all 0.2s' }}/>
+                      <input
+                        type="color"
+                        value={currentColor}
+                        onChange={e => setColorOverride(key, e.target.value)}
+                        style={{ position:'absolute', opacity:0, width:0, height:0, pointerEvents:'none' }}
+                      />
+                    </label>
+
+                    {/* Infos */}
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:p.text1 }}>{label}</div>
+                      <div style={{ fontSize:11, color:p.text4, marginTop:1 }}>{desc}</div>
+                    </div>
+
+                    {/* Valeur hex */}
+                    <code style={{ fontSize:11, color:p.text3, background:p.whiteFaint, border:`1px solid ${p.border}`, borderRadius:6, padding:'3px 8px' }}>
+                      {currentColor.toUpperCase()}
+                    </code>
+
+                    {/* Reset individuel */}
+                    {hasOverride && (
+                      <button onClick={() => clearColorOverride(key)} title="Réinitialiser cette couleur"
+                        style={{ width:28, height:28, borderRadius:7, border:`1px solid ${p.border2}`, background:p.whiteFaint, color:p.text3, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <RotateCcw size={11}/>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Préréglages rapides */}
+              <div>
+                <p style={{ fontSize:11, color:p.text4, marginBottom:6, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Préréglages rapides</p>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                  {[
+                    { label:'Nuit',    sidebar:'#060B18', page:'#0B1120' },
+                    { label:'Marine',  sidebar:'#0F2041', page:'#111827' },
+                    { label:'Ardoise', sidebar:'#1E293B', page:'#0F172A' },
+                    { label:'Forêt',   sidebar:'#0D2818', page:'#0A1F14' },
+                    { label:'Brume',   sidebar:'#E8EEF6', page:'#F0F4FA' },
+                    { label:'Blanc',   sidebar:'#FFFFFF', page:'#F8FAFC' },
+                    { label:'Ciel',    sidebar:'#EFF6FF', page:'#F0F7FF' },
+                  ].map(({ label, sidebar, page }) => (
+                    <button key={label} title={`${sidebar} / ${page}`}
+                      onClick={() => { setColorOverride('sidebar', sidebar); setColorOverride('page', page); }}
+                      style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:7, border:`1px solid ${p.border2}`, background:p.whiteFaint, cursor:'pointer', fontSize:11, color:p.text2, fontWeight:600 }}>
+                      <span style={{ display:'inline-flex', borderRadius:4, overflow:'hidden', flexShrink:0 }}>
+                        <span style={{ width:8, height:14, background:sidebar, display:'block' }}/>
+                        <span style={{ width:8, height:14, background:page, display:'block' }}/>
+                      </span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tout réinitialiser */}
+              {Object.keys(colorOverrides).length > 0 && (
+                <button onClick={clearAllColorOverrides}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:`1px solid ${p.border2}`, background:p.whiteFaint, color:p.text3, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  <RotateCcw size={12}/> Revenir aux couleurs du thème
+                </button>
+              )}
             </div>
           </Field>
 

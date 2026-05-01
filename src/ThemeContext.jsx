@@ -80,23 +80,83 @@ export const LIGHT = {
   purple: '#7C3AED',
 };
 
+/* ─── Valeurs par défaut des color pickers (hex solide, sans alpha) ─────────
+   Utilisées uniquement pour initialiser <input type="color"> quand aucun
+   override n'est enregistré. Ne remplacent pas les CSS vars du thème. */
+export const THEME_COLOR_DEFAULTS = {
+  dark:  { sidebar: '#060B18', page: '#0B1120' },
+  light: { sidebar: '#FFFFFF', page: '#F0F4FA' },
+};
+
+/* ─── Helpers localStorage ───────────────────────────────────────────────── */
+const COLORS_KEY = 'smi_colors';
+
+function getStoredColors() {
+  try { return JSON.parse(localStorage.getItem(COLORS_KEY) || '{}'); } catch { return {}; }
+}
+
+function persistColors(obj) {
+  try { localStorage.setItem(COLORS_KEY, JSON.stringify(obj)); } catch { /* ignore */ }
+}
+
+/* mapping clé logique → CSS custom property */
+const CSS_VAR_MAP = {
+  sidebar: '--bg-sidebar',
+  page:    '--bg-page',
+};
+
 /* ─── Contexte ────────────────────────────────────────────────────────────── */
 const ThemeContext = createContext({ theme: 'dark', isDark: true, p: DARK, toggle: () => {} });
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('smi_theme') || 'dark');
+  const [theme, setTheme]               = useState(() => localStorage.getItem('smi_theme') || 'dark');
+  const [colorOverrides, setColorOverrides] = useState(() => getStoredColors());
 
+  /* Applique data-theme ET les overrides de couleur en inline style */
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('smi_theme', theme);
-  }, [theme]);
+
+    Object.entries(CSS_VAR_MAP).forEach(([key, cssVar]) => {
+      if (colorOverrides[key]) {
+        document.documentElement.style.setProperty(cssVar, colorOverrides[key]);
+      } else {
+        document.documentElement.style.removeProperty(cssVar);
+      }
+    });
+  }, [theme, colorOverrides]);
 
   const toggle = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const isDark = theme === 'dark';
   const p = isDark ? DARK : LIGHT;
 
+  const setColorOverride = (key, value) => {
+    setColorOverrides(prev => {
+      const next = { ...prev, [key]: value };
+      persistColors(next);
+      return next;
+    });
+  };
+
+  const clearColorOverride = (key) => {
+    setColorOverrides(prev => {
+      const next = { ...prev };
+      delete next[key];
+      persistColors(next);
+      return next;
+    });
+  };
+
+  const clearAllColorOverrides = () => {
+    setColorOverrides({});
+    persistColors({});
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, isDark, p, toggle, setTheme }}>
+    <ThemeContext.Provider value={{
+      theme, isDark, p, toggle, setTheme,
+      colorOverrides, setColorOverride, clearColorOverride, clearAllColorOverrides,
+    }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -128,4 +188,4 @@ export function ThemeToggleBtn() {
       {isDark ? <Sun size={15}/> : <Moon size={15}/>}
     </button>
   );
-}
+}
