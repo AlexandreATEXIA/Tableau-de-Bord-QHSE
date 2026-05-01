@@ -1,37 +1,12 @@
 /* eslint-disable react-refresh/only-export-components --
-   * Cette règle ne tolère que des exports de composants dans un .jsx, mais
-   * ce fichier exporte aussi des constantes, hooks ou contextes utilisés
-   * ailleurs dans l'app. Splitter en fichier .js séparé n'apporterait pas
-   * de bénéfice pratique (HMR fonctionne, la valeur est statique). */
+   * Ce fichier exporte aussi des constantes et hooks utilisés ailleurs. */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
 // =====================================================================
 // UserContext — Identité, rôle et permissions de l'utilisateur connecté
 // =====================================================================
-// Étape E (auth + RGPD) : le rôle métier est désormais lu depuis la table
-// `public.user_roles` (créée en E1) plutôt que depuis `user_metadata`.
-// Avantage : changement de rôle pris en compte instantanément (sans
-// attendre le refresh JWT, qui peut prendre jusqu'à 1h).
-//
-// Rôles supportés :
-//   - admin            : plein accès (Responsable QHSE, gestion utilisateurs)
-//   - responsable_qhse : plein accès, sans gestion utilisateurs (équivalent admin
-//                        pour évolutions futures multi-personnes)
-//   - direction        : accès réduit (Comex, revue, stats, objectifs, KPI, calendrier, rapport)
-//   - lecteur          : voit tout, n'écrit rien (DG en consultation)
-//   - operateur        : accès réduit + droit d'écriture (Comex, accidents, PDCA, calendrier)
-//
-// Si un compte authentifié n'a PAS de ligne dans user_roles, on défaut à
-// `null` (aucun rôle, aucun accès) — affichage explicite à l'utilisateur
-// dans App.jsx pour qu'il sache qu'il faut contacter l'admin.
-// =====================================================================
 
-// `menuAccess`        : null = tous les menus, sinon liste blanche d'IDs.
-// `menuAccessExclude` : liste noire — masque ces IDs même si menuAccess les autoriserait.
-//                       Utilisé pour le `lecteur` : il voit tout SAUF les écrans d'écriture
-//                       (Import Excel) qui n'auraient aucun sens à afficher.
-// `readOnly`          : si true, les boutons d'écriture sont grisés via canWrite.
 export const ROLES = {
   admin:            { label: 'Administrateur',     color: '#8B5CF6', menuAccess: null, menuAccessExclude: [],            readOnly: false },
   responsable_qhse: { label: 'Responsable QHSE',   color: '#3B82F6', menuAccess: null, menuAccessExclude: [],            readOnly: false },
@@ -40,6 +15,30 @@ export const ROLES = {
   operateur:        { label: 'Opérateur',           color: '#10B981', menuAccess: ['comex','accidents','pdca','calendrier'], menuAccessExclude: [], readOnly: false },
 };
 
+// ─── Cache localStorage du rôle ──────────────────────────────────────────────
+// Permet de restituer le rôle instantanément au rechargement, sans attendre
+// Supabase (cold-start pouvant dépasser 8–15 s sur le plan gratuit).
+// La clé contient l'userId pour éviter les collisions multi-comptes.
+const ROLE_CACHE_KEY = 'smi_role_cache';
+
+function getCachedRole(userId) {
+  try {
+    const raw = localStorage.getItem(ROLE_CACHE_KEY);
+    if (!raw) return null;
+    const { uid, role } = JSON.parse(raw);
+    return uid === userId ? (role || null) : null;
+  } catch { return null; }
+}
+
+function setCachedRole(userId, role) {
+  try { localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ uid: userId, role })); } catch {}
+}
+
+function clearCachedRole() {
+  try { localStorage.removeItem(ROLE_CACHE_KEY); } catch {}
+}
+
+// ─── Contexte ─────────────────────────────────────────────────────────────────
 const UserContext = createContext(null);
 
 export function UserProvider({ children }) {
@@ -47,17 +46,15 @@ export function UserProvider({ children }) {
   const [role, setRole]       = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ─── Chargement du rôle depuis public.user_roles ──────────────────────
-  // Appelé à chaque changement de session. En cas d'erreur (réseau coupé,
-  // RLS bloque, ligne inexistante) on retombe sur null = aucun accès.
-  // C'est le comportement le plus sûr : un user mal configuré ne peut
-  // pas accidentellement passer en admin.
-  //
-  // Timeout 8s pour éviter que le hook se bloque indéfiniment si Supabase
-  // met du temps à répondre (cas des sessions stale au reload). Au pire
-  // on retombe sur role=null et l'utilisateur peut retry la connexion.
-  const fetchRole = async (currentUser) => {
-    if (!currentUser) { setRole(null); return; }
+  // ─── Chargement du rôle depuis public.user_roles ──────────────────────────
+  // `fromCache` = true quand le cache a déjà fourni un rôle valide.
+  //   → en cas d'échec réseau on NE remet PAS role à null (évite la
+  //     déconnexion surprise) ; on laisse le cache tenir.
+  // `fromCache` = false (premier login, pas de cache)
+  //   → en cas d'échec on retombe sur null = "Compte non configuré".
+  const fetchRole = async (currentUser, fromCache = false) => {
+    if (!currentUser) { setRole(null); clearCachedRole(); return; }
+
     try {
       const result = await Promise.race([
         supabase
@@ -66,39 +63,53 @@ export function UserProvider({ children }) {
           .eq('user_id', currentUser.id)
           .maybeSingle(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('fetchRole timeout 8s')), 8000)
+          setTimeout(() => reject(new Error('fetchRole timeout 30s')), 30000)
         ),
       ]);
       const { data, error } = result;
       if (error) throw error;
-      setRole(data?.role ?? null);
+      const newRole = data?.role ?? null;
+      setRole(newRole);
+      if (newRole) setCachedRole(currentUser.id, newRole);
+      else clearCachedRole();
     } catch (e) {
       console.warn('[UserContext] fetchRole failed:', e?.message || e);
-      setRole(null);
+      // Si le cache avait fourni un rôle : on le conserve (pas de déconnexion).
+      // Sinon : role reste null → l'écran "Compte non configuré" s'affiche.
+      if (!fromCache) setRole(null);
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Avant : on appelait fetchRole DEUX fois au démarrage (une dans
-    // getSession().then() ET une dans onAuthStateChange via l'event
-    // INITIAL_SESSION qui se déclenche automatiquement à la souscription).
-    // Conséquence : race condition + double-appel inutile. Le premier
-    // pouvait timeout sur 8s avant que le second réussisse.
-    //
-    // Solution : on s'appuie UNIQUEMENT sur onAuthStateChange. Supabase
-    // garantit l'envoi d'un event 'INITIAL_SESSION' à la souscription
-    // avec la session courante (ou null si non connecté). Donc pas
-    // besoin du getSession() initial — un seul chemin, pas de race.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       const u = session?.user ?? null;
       setUser(u);
-      await fetchRole(u);
-      // setLoading(false) ici plutôt qu'au getSession.then : on libère
-      // l'écran de chargement seulement quand on connaît rôle (ou null).
-      setLoading(false);
+
+      if (!u) {
+        // Déconnexion : on efface tout
+        setRole(null);
+        clearCachedRole();
+        setLoading(false);
+        return;
+      }
+
+      // Vérifie si on a un rôle en cache pour cet utilisateur
+      const cached = getCachedRole(u.id);
+      if (cached) {
+        // Rôle connu : on l'applique immédiatement → pas de spinner, pas de
+        // déconnexion même si Supabase est lent.
+        setRole(cached);
+        setLoading(false);
+        // Rafraîchissement silencieux en arrière-plan
+        fetchRole(u, true);
+      } else {
+        // Premier login sur ce poste : on attend Supabase (30 s max)
+        await fetchRole(u, false);
+        setLoading(false);
+      }
     });
 
     return () => { mounted = false; subscription.unsubscribe(); };
@@ -110,23 +121,17 @@ export function UserProvider({ children }) {
     || 'Utilisateur';
   const initiale    = displayName.charAt(0).toUpperCase();
 
-  const logout = () => supabase.auth.signOut();
+  const logout = () => { clearCachedRole(); supabase.auth.signOut(); };
 
-  // canAccess : le rôle peut-il voir cet onglet ? menuAccess: null = tout,
-  // sauf les menus listés dans menuAccessExclude (liste noire pour lecteur).
   const canAccess = (menuId) => {
-    if (!role) return false;          // pas de rôle = pas d'accès
+    if (!role) return false;
     const conf = ROLES[role];
     if (!conf) return false;
     if (conf.menuAccessExclude?.includes(menuId)) return false;
-    if (!conf.menuAccess) return true; // null = tous les menus restants
+    if (!conf.menuAccess) return true;
     return conf.menuAccess.includes(menuId);
   };
 
-  // canWrite : le rôle a-t-il le droit d'écrire ? Branchés dans les
-  // composants pour griser les boutons (Ajouter, Supprimer, Modifier…).
-  // La VRAIE protection viendra de la RLS Supabase (E7) — `canWrite`
-  // n'est qu'une amélioration UX (pas de boutons fantômes).
   const isReadOnly = !!ROLES[role]?.readOnly;
   const canWrite   = !!role && !isReadOnly;
 
