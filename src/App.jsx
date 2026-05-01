@@ -5,7 +5,8 @@ import {
   FileText, HeartPulse, FileDown, Mail, BarChart2,
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
   PieChart, ClipboardList, Menu, X, LogOut, Archive,
-  Truck, ScrollText, Settings, Search, CalendarCheck, ShieldCheck
+  Truck, ScrollText, Settings, Search, CalendarCheck, ShieldCheck,
+  Lock, Eye, EyeOff, RefreshCw,
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
@@ -38,6 +39,90 @@ import Parametres            from './Parametres';
 import RechercheGlobale      from './RechercheGlobale';
 import ReunionsQHSE          from './ReunionsQHSE';
 import RGPDModule            from './RGPDModule';
+
+function UpdatePasswordScreen({ onDone, onCancel }) {
+  const [pwd, setPwd]         = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (pwd.length < 6) { setError('Le mot de passe doit contenir au moins 6 caractères.'); return; }
+    if (pwd !== confirm) { setError('Les mots de passe ne correspondent pas.'); return; }
+    setLoading(true);
+    const { error: err } = await supabase.auth.updateUser({ password: pwd });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    setSuccess(true);
+    setTimeout(onDone, 2000);
+  };
+
+  return (
+    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#050c18 0%,#0b1120 50%,#080f1e 100%)', padding:20 }}>
+      <div style={{ width:'100%', maxWidth:400, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:20, padding:'40px 36px', backdropFilter:'blur(20px)', boxShadow:'0 32px 80px rgba(0,0,0,0.5)' }}>
+        <div style={{ textAlign:'center', marginBottom:28 }}>
+          <div style={{ width:60, height:60, background:'linear-gradient(135deg,rgba(79,99,231,0.3),rgba(16,185,129,0.2))', border:'1px solid rgba(79,99,231,0.4)', borderRadius:16, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+            <Lock size={26} color="#60A5FA"/>
+          </div>
+          <div style={{ fontSize:19, fontWeight:800, color:'#fff' }}>Nouveau mot de passe</div>
+          <div style={{ fontSize:12, color:'#64748B', marginTop:4 }}>Saisissez et confirmez votre nouveau mot de passe</div>
+        </div>
+
+        {success ? (
+          <div style={{ background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:10, padding:18, textAlign:'center' }}>
+            <div style={{ fontSize:28, marginBottom:8 }}>✅</div>
+            <p style={{ fontSize:14, color:'#6EE7B7', fontWeight:700 }}>Mot de passe mis à jour !</p>
+            <p style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Redirection en cours…</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {[
+              { label:'Nouveau mot de passe', val:pwd, set:setPwd },
+              { label:'Confirmer le mot de passe', val:confirm, set:setConfirm },
+            ].map((f, i) => (
+              <div key={i}>
+                <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>{f.label}</label>
+                <div style={{ position:'relative' }}>
+                  <input
+                    type={showPwd ? 'text' : 'password'} value={f.val}
+                    onChange={e => f.set(e.target.value)} required minLength={6}
+                    placeholder="••••••••"
+                    style={{ width:'100%', padding:'11px 40px 11px 14px', borderRadius:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', fontSize:14, outline:'none', boxSizing:'border-box' }}
+                    onFocus={e => e.target.style.borderColor='rgba(79,99,231,0.6)'}
+                    onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.1)'}
+                  />
+                  {i === 0 && (
+                    <button type="button" onClick={() => setShowPwd(v => !v)}
+                      style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#64748B', padding:0, display:'flex' }}>
+                      {showPwd ? <EyeOff size={16}/> : <Eye size={16}/>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {error && <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#FCA5A5' }}>{error}</div>}
+
+            <button type="submit" disabled={loading}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', background:loading?'rgba(79,99,231,0.4)':'linear-gradient(135deg,#4F63E7,#3B4FD4)', color:'#fff', fontSize:14, fontWeight:700, cursor:loading?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:4 }}>
+              {loading ? <RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }}/> : <Lock size={16}/>}
+              {loading ? 'Mise à jour...' : 'Enregistrer'}
+            </button>
+
+            <button type="button" onClick={onCancel}
+              style={{ background:'none', border:'none', color:'#64748B', fontSize:13, cursor:'pointer', textAlign:'center' }}>
+              Annuler — retour à la connexion
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const MENU = [
   {
@@ -84,10 +169,15 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [session, setSession]           = useState(undefined);
   const [showInvite, setShowInvite]     = useState(false);
+  const [isPwdRecovery, setIsPwdRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      if (event === 'PASSWORD_RECOVERY') setIsPwdRecovery(true);
+      else if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') setIsPwdRecovery(false);
+    });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -109,6 +199,9 @@ export default function App() {
     </div>
   );
   if (!session) return <LoginPage />;
+
+  // Lien de réinitialisation de mot de passe cliqué depuis l'email
+  if (isPwdRecovery) return <UpdatePasswordScreen onDone={() => setIsPwdRecovery(false)} onCancel={() => { supabase.auth.signOut(); setIsPwdRecovery(false); }} />;
 
   // Compte authentifié mais sans rôle attribué dans user_roles : impossible de
   // savoir ce qu'il a le droit de faire — on bloque avec un message explicite

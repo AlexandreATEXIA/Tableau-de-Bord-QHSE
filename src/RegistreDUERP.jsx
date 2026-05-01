@@ -232,6 +232,7 @@ export default function RegistreDUERP() {
       criticite: ci,
       action_preventive: form.action_preventive,
       pilote: form.pilote,
+      echeance: form.echeance || null,
       date_maj: form.date_maj || null,
     };
     // Champs issus de la migration

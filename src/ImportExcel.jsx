@@ -39,10 +39,13 @@ const MAPPINGS = {
       'Mesure EPI (description)':'mesures_epi',
       'Action préventive':'action_preventive',
       'Pilote':'pilote',
+      'Échéance':'echeance',
     },
     requis: ['Danger identifié'],
     // Colonnes booléennes à dériver de la présence de texte
     boolFromText: { mesures_epc:'a_mesure_epc', mesures_orga:'a_mesure_orga', mesures_epi:'a_mesure_epi' },
+    // Calcul automatique criticite_resid et coefficient_reducteur après import
+    calcCriticite: true,
     // Auto-enrichissement des référentiels éditables du module RegistreDUERP
     listesAEnrichir: {
       famille_risque:      ['duerp', 'Familles de risques'],
@@ -131,6 +134,18 @@ const MAPPINGS = {
     },
   },
 };
+
+// ─── Helpers DUERP (dupliqués ici pour ne pas coupler ImportExcel à RegistreDUERP) ──
+function getCoeffDUERP(epc, orga, epi) {
+  if (epc && orga && epi) return 0.30;
+  if (epc && orga)        return 0.40;
+  if (epc && epi)         return 0.45;
+  if (orga && epi)        return 0.60;
+  if (epc)                return 0.50;
+  if (orga)               return 0.70;
+  if (epi)                return 0.80;
+  return 1.00;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -239,6 +254,15 @@ function transformRow(row, mapping) {
   // Calculer criticité initiale auto pour DUERP (CI = G × F)
   if (result.gravite && result.probabilite && !result.criticite) {
     result.criticite = result.gravite * result.probabilite;
+  }
+  // Calculer criticité résiduelle et coefficient si le mapping le demande (DUERP)
+  if (mapping.calcCriticite && result.gravite && result.probabilite) {
+    const epc  = !!result.a_mesure_epc;
+    const orga = !!result.a_mesure_orga;
+    const epi  = !!result.a_mesure_epi;
+    const coeff = getCoeffDUERP(epc, orga, epi);
+    result.coefficient_reducteur = coeff;
+    result.criticite_resid = Math.max(1, Math.round(result.gravite * result.probabilite * coeff));
   }
   return result;
 }
