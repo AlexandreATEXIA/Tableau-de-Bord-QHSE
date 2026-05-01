@@ -164,12 +164,14 @@ export default function App() {
   const { theme } = useTheme();
   const { role, canAccess, loading: userLoading, logout, displayName, initiale } = useUser();
   const { config } = useConfig();
-  const [activeTab, setActiveTab]     = useState('comex');
-  const [animKey, setAnimKey]         = useState(0);
+  const [activeTab, setActiveTab]       = useState('comex');
+  const [animKey, setAnimKey]           = useState(0);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [session, setSession]           = useState(undefined);
   const [showInvite, setShowInvite]     = useState(false);
   const [isPwdRecovery, setIsPwdRecovery] = useState(false);
+  // Pré-remplissage Plan d'Actions depuis le DUERP
+  const [prefillAction, setPrefillAction] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -398,12 +400,12 @@ export default function App() {
         <main style={{ flex:1, overflowY:'auto', padding:'16px', paddingLeft:'max(16px, env(safe-area-inset-left))', paddingRight:'max(16px, env(safe-area-inset-right))', background:'var(--bg-page)', transition:'background 0.25s', paddingBottom:'max(80px, calc(env(safe-area-inset-bottom) + 80px))' }}>
           <div key={animKey} className="animate-fade-up">
             {activeTab === 'comex'         && <DashboardComex onNavigate={handleTab} />}
-            {activeTab === 'duerp'         && <RegistreDUERP />}
+            {activeTab === 'duerp'         && <RegistreDUERP onNavigateToPdca={data => { setPrefillAction(data); handleTab('pdca'); }} />}
             {activeTab === 'accidents'     && <SecuriteAccidents />}
             {activeTab === 'qualite'       && <QualiteAudits />}
             {activeTab === 'env'           && <Environnement />}
             {activeTab === 'rh'            && <SocialRH />}
-            {activeTab === 'pdca'          && <PlanActions />}
+            {activeTab === 'pdca'          && <PlanActions prefill={prefillAction} onPrefillConsumed={() => setPrefillAction(null)} />}
             {activeTab === 'calendrier'    && <CalendrierQHSE />}
             {activeTab === 'veille'        && <VeilleReglementaire />}
             {activeTab === 'revue'         && <RevueDirection />}

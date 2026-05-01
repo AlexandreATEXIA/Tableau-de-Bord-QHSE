@@ -7,7 +7,7 @@ import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus, Trash2, RefreshCw, Filter, CheckCircle, AlertTriangle,
-  Clock, Target, Save, X, TrendingUp, Euro, Archive, RotateCcw, History
+  Clock, Target, Save, X, TrendingUp, Euro, Archive, RotateCcw, History, ListPlus
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
@@ -145,7 +145,7 @@ const mkForm = (domaines, origines) => ({
 });
 
 /* ══════════════════════════════════════════════════════════════════════════════ */
-export default function PlanActions() {
+export default function PlanActions({ prefill, onPrefillConsumed }) {
   const { p, isDark } = useTheme();
   const { toast } = useToast();
   const [actions, setActions]       = useState([]);
@@ -165,6 +165,21 @@ export default function PlanActions() {
   useEffect(() => { actionsRef.current = actions; }, [actions]);
 
   useEffect(() => { fetchActions(); }, []);
+
+  // Pré-remplissage depuis le DUERP : ouvre le formulaire avec les données du
+  // risque source. Les champs vides (echeance, pilote…) gardent les valeurs par
+  // défaut de mkForm ; seuls les champs non-vides sont surchargés.
+  useEffect(() => {
+    if (!prefill) return;
+    const filled = Object.fromEntries(
+      Object.entries(prefill).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    setForm({ ...mkForm(DOMAINES_DEFAULT, ORIGINES_DEFAULT), ...filled });
+    setShowForm(true);
+    setShowArchive(false);
+    if (onPrefillConsumed) onPrefillConsumed();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]); // onPrefillConsumed intentionnellement omis — callback stable du parent
 
   /* ── Fetch ──────────────────────────────────────────────────────────────── */
   async function fetchActions() {
@@ -381,6 +396,16 @@ export default function PlanActions() {
             </h3>
             <button onClick={() => setShowForm(false)} style={{ color: p.text4, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={18}/></button>
           </div>
+
+          {/* Bandeau contextuel DUERP — affiché quand le formulaire est pré-rempli */}
+          {form.origine === 'DUERP' && form.reference_source && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: isDark ? 'rgba(16,185,129,0.08)' : '#ECFDF5', border: '1px solid ' + (isDark ? 'rgba(16,185,129,0.25)' : '#A7F3D0'), borderRadius: 8, padding: '8px 14px', marginBottom: 16 }}>
+              <ListPlus size={14} color={isDark ? '#34D399' : '#047857'}/>
+              <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? '#34D399' : '#047857' }}>
+                Pré-rempli depuis le DUERP — {form.reference_source}
+              </span>
+            </div>
+          )}
 
           {/* ① Identification */}
           <div style={{ background: p.whiteFaint2, border: '1px solid ' + p.border, borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>

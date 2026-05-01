@@ -2,7 +2,7 @@
    * Ce fichier exporte aussi des constantes utilisées par ImportExcel. */
 import { useTheme } from './ThemeContext';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, AlertOctagon, RefreshCw, Shield, Filter, X, Save, Archive, RotateCcw, History, Eye } from 'lucide-react';
+import { Plus, Trash2, AlertOctagon, RefreshCw, Shield, Filter, X, Save, Archive, RotateCcw, History, Eye, ListPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import GestionListes from './GestionListes';
 import { useToast } from './Toast';
@@ -322,8 +322,31 @@ function RisqueDetailModal({ row, onClose, onSave, listeUT, listeFamilles, liste
   );
 }
 
+/* ─── Mapping DUERP → Plan d'Actions ────────────────────────────────────────
+   Construit le pré-remplissage du formulaire Plan d'Actions à partir d'une
+   ligne DUERP. La criticité résiduelle détermine la priorité automatique.
+   ─────────────────────────────────────────────────────────────────────────── */
+function toPdcaPrefill(row) {
+  const cr = row.criticite_resid ?? row.criticite ?? 1;
+  return {
+    origine:          'DUERP',
+    domaine:          'Sécurité',
+    type_action:      'Préventive',
+    action:           row.action_preventive?.trim() || `Maîtrise du risque : ${row.danger}`,
+    cause_racine:     [row.famille_risque, row.evenement_declencheur].filter(Boolean).join(' — '),
+    reference_source: `DUERP · ${row.unite_travail}`,
+    pilote:           row.pilote || '',
+    echeance:         row.echeance || '',
+    priorite:         cr >= 13 ? '🔴 Urgente' : cr >= 9 ? '🟠 Haute' : '🟡 Normale',
+    commentaire:      `Risque : ${row.danger}. Dommage : ${row.dommage_potentiel || '—'}. CR = ${cr}.`,
+    statut:           'À lancer',
+    avancement_pct:   0,
+    resultat_efficacite: 'Non évalué',
+  };
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function RegistreDUERP() {
+export default function RegistreDUERP({ onNavigateToPdca }) {
   const { p, isDark } = useTheme();
   const { toast } = useToast();
   const [risques, setRisques]         = useState([]);
@@ -362,13 +385,13 @@ export default function RegistreDUERP() {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('registre_duerp').update({ archived_at: now, archived_by: user?.email || null }).eq('id', id);
-    try { await logAction('registre_duerp', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch {}
+    try { await logAction('registre_duerp', id, 'ARCHIVE', { archived_by: user?.email || null }, user?.email || ''); } catch { /* ignore */ }
     setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: now } : r));
     toast({ message: 'Risque archivé dans l\'historique', type: 'info' });
   };
   const restoreRow = async (id) => {
     await supabase.from('registre_duerp').update({ archived_at: null, archived_by: null }).eq('id', id);
-    try { await logAction('registre_duerp', id, 'RESTORE', {}); } catch {}
+    try { await logAction('registre_duerp', id, 'RESTORE', {}); } catch { /* ignore */ }
     setRisques(prev => prev.map(r => r.id === id ? { ...r, archived_at: null } : r));
     toast({ message: 'Risque restauré', type: 'success' });
   };
@@ -415,7 +438,7 @@ export default function RegistreDUERP() {
     setSaving(null);
     if (error) toast({ message: `Erreur sauvegarde : ${error.message}`, type: 'error' });
     else {
-      try { await logAction('registre_duerp', rowData.id, 'UPDATE', { unite: rowData.unite_travail, criticite_resid: rowData.criticite_resid }); } catch {}
+      try { await logAction('registre_duerp', rowData.id, 'UPDATE', { unite: rowData.unite_travail, criticite_resid: rowData.criticite_resid }); } catch { /* ignore */ }
       toast({ message: 'Risque sauvegardé', type: 'success' });
     }
   };
@@ -476,7 +499,7 @@ export default function RegistreDUERP() {
       return;
     }
     if (data?.[0]) {
-      try { await logAction('registre_duerp', data[0].id, 'CREATE', { unite: form.unite_travail, famille: form.famille_risque, danger: form.danger, criticite_resid: cr }); } catch {}
+      try { await logAction('registre_duerp', data[0].id, 'CREATE', { unite: form.unite_travail, famille: form.famille_risque, danger: form.danger, criticite_resid: cr }); } catch { /* ignore */ }
       setRisques(prev => [...prev, data[0]].sort((a, b) => (b.criticite_resid || b.criticite || 1) - (a.criticite_resid || a.criticite || 1)));
       setShowForm(false);
       setForm({ ...FORM_INIT, unite_travail: listeUT[0] });
@@ -488,7 +511,7 @@ export default function RegistreDUERP() {
   const deleteRow = async (id) => {
     if (!window.confirm('Supprimer ce risque définitivement ?')) return;
     await supabase.from('registre_duerp').delete().eq('id', id);
-    try { await logAction('registre_duerp', id, 'DELETE', {}); } catch {}
+    try { await logAction('registre_duerp', id, 'DELETE', {}); } catch { /* ignore */ }
     setRisques(prev => prev.filter(r => r.id !== id));
     toast({ message: 'Risque supprimé', type: 'info' });
   };
@@ -957,7 +980,7 @@ export default function RegistreDUERP() {
                     <th style={{ width: 84, textAlign: 'center' }}>CR</th>
                     <th style={{ minWidth: 160 }}>Action préventive</th>
                     <th style={{ width: 90 }}>Pilote</th>
-                    <th style={{ width: 64, textAlign: 'center' }}>Détail</th>
+                    <th style={{ width: 92, textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -983,7 +1006,7 @@ export default function RegistreDUERP() {
                         {/* Famille · Danger */}
                         <td>
                           {row.famille_risque && (
-                            <div style={{ fontSize: 10, color: p.blue, fontWeight: 700, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.famille_risque}</div>
+                            <div style={{ fontSize: 10, color: p.blue, fontWeight: 700, marginBottom: 3, lineHeight: 1.3 }}>{row.famille_risque}</div>
                           )}
                           <input type="text" value={row.danger || ''}
                             onChange={e => updateRow(row.id, { danger: e.target.value })}
@@ -993,17 +1016,18 @@ export default function RegistreDUERP() {
 
                         {/* Dommage / Exposés / Mesures — colonne enrichie */}
                         <td>
-                          <div style={{ fontSize: 11, color: p.text2, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {/* Dommage : 2 lignes max, texte complet au survol */}
+                          <div title={row.dommage_potentiel || ''} style={{ fontSize: 11, color: p.text2, marginBottom: 2, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                             {row.dommage_potentiel || <span style={{ color: p.text4 }}>—</span>}
                           </div>
                           {row.personnes_exposees && (
-                            <div style={{ fontSize: 10, color: p.text4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{row.personnes_exposees}</div>
+                            <div title={row.personnes_exposees} style={{ fontSize: 10, color: p.text4, marginBottom: 3, lineHeight: 1.3 }}>{row.personnes_exposees}</div>
                           )}
-                          {/* Résumé des mesures actives */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                            {row.a_mesure_epc  && row.mesures_epc  && <span title={row.mesures_epc}  style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.15)',  color: '#3B82F6',  border: '1px solid rgba(59,130,246,0.3)',  maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>EPC: {row.mesures_epc}</span>}
-                            {row.a_mesure_orga && row.mesures_orga && <span title={row.mesures_orga} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(139,92,246,0.15)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.3)', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>ORG: {row.mesures_orga}</span>}
-                            {row.a_mesure_epi  && row.mesures_epi  && <span title={row.mesures_epi}  style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>EPI: {row.mesures_epi}</span>}
+                          {/* Résumé des mesures actives — texte enroulé, tooltip complet */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {row.a_mesure_epc  && row.mesures_epc  && <span title={row.mesures_epc}  style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.15)',  color: '#3B82F6',  border: '1px solid rgba(59,130,246,0.3)',  wordBreak: 'break-word' }}>EPC: {row.mesures_epc}</span>}
+                            {row.a_mesure_orga && row.mesures_orga && <span title={row.mesures_orga} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(139,92,246,0.15)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.3)', wordBreak: 'break-word' }}>ORG: {row.mesures_orga}</span>}
+                            {row.a_mesure_epi  && row.mesures_epi  && <span title={row.mesures_epi}  style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', wordBreak: 'break-word' }}>EPI: {row.mesures_epi}</span>}
                           </div>
                         </td>
 
@@ -1082,6 +1106,15 @@ export default function RegistreDUERP() {
                                     style={{ color: p.blue, background: 'none', border: 'none', cursor: 'pointer', padding: 5, display: 'flex', alignItems: 'center' }}>
                                     <Eye size={14}/>
                                   </button>
+                                  {/* Bouton → Plan d'Actions (registre uniquement) */}
+                                  {!showArchive && onNavigateToPdca && (
+                                    <button
+                                      onClick={() => onNavigateToPdca(toPdcaPrefill(row))}
+                                      title="Ajouter une action dans le Plan d'Actions"
+                                      style={{ color: '#10B981', background: 'none', border: 'none', cursor: 'pointer', padding: 5, display: 'flex', alignItems: 'center' }}>
+                                      <ListPlus size={14}/>
+                                    </button>
+                                  )}
                                   {showArchive
                                     ? <div style={{ display:'flex', gap:2 }}>
                                         <button onClick={() => restoreRow(row.id)} title="Restaurer" style={{ color:'#10B981', background:'none', border:'none', cursor:'pointer', padding:5 }}><RotateCcw size={13}/></button>
