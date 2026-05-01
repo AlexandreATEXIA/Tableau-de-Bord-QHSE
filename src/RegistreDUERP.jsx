@@ -1035,7 +1035,7 @@ export default function RegistreDUERP({ onNavigateToPdca }) {
                         <td className="text-center">
                           <select value={row.gravite || 1}
                             onChange={e => { const g = Number(e.target.value); const cur = risquesRef.current.find(r => r.id === row.id) || row; const upd = { ...cur, gravite: g, criticite: g * Number(cur.probabilite || 1), criticite_resid: calcCR(g, cur.probabilite, cur.a_mesure_epc, cur.a_mesure_orga, cur.a_mesure_epi), coefficient_reducteur: getCoefficient(cur.a_mesure_epc, cur.a_mesure_orga, cur.a_mesure_epi) }; updateRow(row.id, { gravite: g }); saveRowDirect(upd); }}
-                            style={{ ...inp, color: Number(row.gravite) >= 3 ? '#EF4444' : '#F59E0B', fontWeight: 800, fontSize: 14, padding: '5px 2px', textAlign: 'center', cursor: 'pointer' }}>
+                            style={{ ...inp, color: Number(row.gravite) >= 3 ? '#EF4444' : '#F59E0B', fontWeight: 800, fontSize: 14, padding: '5px 2px', textAlign: 'center', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}>
                             {[1, 2, 3, 4].map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </td>
@@ -1044,7 +1044,7 @@ export default function RegistreDUERP({ onNavigateToPdca }) {
                         <td className="text-center">
                           <select value={row.probabilite || 1}
                             onChange={e => { const f = Number(e.target.value); const cur = risquesRef.current.find(r => r.id === row.id) || row; const upd = { ...cur, probabilite: f, criticite: Number(cur.gravite || 1) * f, criticite_resid: calcCR(cur.gravite, f, cur.a_mesure_epc, cur.a_mesure_orga, cur.a_mesure_epi), coefficient_reducteur: getCoefficient(cur.a_mesure_epc, cur.a_mesure_orga, cur.a_mesure_epi) }; updateRow(row.id, { probabilite: f }); saveRowDirect(upd); }}
-                            style={{ ...inp, color: Number(row.probabilite) >= 3 ? '#EF4444' : '#F59E0B', fontWeight: 800, fontSize: 14, padding: '5px 2px', textAlign: 'center', cursor: 'pointer' }}>
+                            style={{ ...inp, color: Number(row.probabilite) >= 3 ? '#EF4444' : '#F59E0B', fontWeight: 800, fontSize: 14, padding: '5px 2px', textAlign: 'center', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}>
                             {[1, 2, 3, 4].map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </td>
