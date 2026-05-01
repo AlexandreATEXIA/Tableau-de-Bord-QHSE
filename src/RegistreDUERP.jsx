@@ -1007,16 +1007,17 @@ export default function RegistreDUERP({ onNavigateToPdca }) {
                           {row.famille_risque && (
                             <div style={{ fontSize: 10, color: p.blue, fontWeight: 700, marginBottom: 3, lineHeight: 1.3 }}>{row.famille_risque}</div>
                           )}
-                          <input type="text" value={row.danger || ''}
+                          <textarea value={row.danger || ''}
                             onChange={e => updateRow(row.id, { danger: e.target.value })}
                             onBlur={() => saveRowById(row.id)}
-                            placeholder="Danger..." style={{ ...inp, fontWeight: 600 }}/>
+                            placeholder="Danger..."
+                            rows={Math.max(2, Math.ceil((row.danger || '').length / 28))}
+                            style={{ ...inp, fontWeight: 600, resize: 'none', lineHeight: 1.4, overflow: 'hidden' }}/>
                         </td>
 
                         {/* Dommage / Exposés / Mesures — colonne enrichie */}
                         <td>
-                          {/* Dommage : 2 lignes max, texte complet au survol */}
-                          <div title={row.dommage_potentiel || ''} style={{ fontSize: 11, color: p.text2, marginBottom: 2, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          <div style={{ fontSize: 11, color: p.text2, marginBottom: 2, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                             {row.dommage_potentiel || <span style={{ color: p.text4 }}>—</span>}
                           </div>
                           {row.personnes_exposees && (
