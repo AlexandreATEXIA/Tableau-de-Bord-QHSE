@@ -967,19 +967,18 @@ export default function RegistreDUERP({ onNavigateToPdca }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="table-modern" style={{ minWidth: 1100 }}>
+              <table className="table-modern" style={{ minWidth: 960 }}>
                 <thead>
                   <tr>
                     <th style={{ width: 130 }}>Unité de travail</th>
-                    <th style={{ minWidth: 170 }}>Famille · Danger</th>
-                    <th style={{ minWidth: 160 }}>Dommage / Exposés / Mesures</th>
-                    <th style={{ width: 56, textAlign: 'center' }}>G</th>
-                    <th style={{ width: 56, textAlign: 'center' }}>F</th>
-                    <th style={{ width: 72, textAlign: 'center' }}>CI</th>
-                    <th style={{ width: 96, textAlign: 'center' }}>EPC·ORG·EPI</th>
-                    <th style={{ width: 84, textAlign: 'center' }}>CR</th>
-                    <th style={{ minWidth: 160 }}>Action préventive</th>
-                    <th style={{ width: 90 }}>Pilote</th>
+                    <th style={{ minWidth: 220 }}>Famille · Danger</th>
+                    <th style={{ minWidth: 230 }}>Dommage / Exposés / Mesures</th>
+                    <th style={{ width: 50, textAlign: 'center' }}>G</th>
+                    <th style={{ width: 50, textAlign: 'center' }}>F</th>
+                    <th style={{ width: 64, textAlign: 'center' }}>CI</th>
+                    <th style={{ width: 90, textAlign: 'center' }}>EPC·ORG·EPI</th>
+                    <th style={{ width: 80, textAlign: 'center' }}>CR</th>
+                    <th style={{ width: 100 }}>Pilote</th>
                     <th style={{ width: 92, textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
@@ -1075,14 +1074,6 @@ export default function RegistreDUERP({ onNavigateToPdca }) {
                         <td className="text-center">
                           <div style={{ background: crInfo.bg, border: `1.5px solid ${crInfo.border}`, borderRadius: 8, padding: '6px 4px', fontWeight: 900, fontSize: 18, color: crInfo.color, textAlign: 'center' }}>{cr}</div>
                           <div style={{ fontSize: 9, color: crInfo.color, fontWeight: 700, marginTop: 2, textAlign: 'center', lineHeight: 1.2 }}>{crInfo.label}</div>
-                        </td>
-
-                        {/* Action préventive */}
-                        <td>
-                          <input type="text" value={row.action_preventive || ''}
-                            onChange={e => updateRow(row.id, { action_preventive: e.target.value })}
-                            onBlur={() => saveRowById(row.id)}
-                            placeholder="Mesure préventive..." style={{ ...inp, fontSize: 11 }}/>
                         </td>
 
                         {/* Pilote */}
