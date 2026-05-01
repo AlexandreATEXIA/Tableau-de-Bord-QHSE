@@ -15,6 +15,20 @@ export const ROLES = {
   operateur:        { label: 'Opérateur',           color: '#10B981', menuAccess: ['comex','accidents','pdca','calendrier'], menuAccessExclude: [], readOnly: false },
 };
 
+// ─── Cache localStorage du nom affiché ───────────────────────────────────────
+const DISPLAY_NAME_KEY = 'smi_display_name';
+
+function getLocalDisplayName() {
+  try { return localStorage.getItem(DISPLAY_NAME_KEY) || null; } catch { return null; }
+}
+
+function saveLocalDisplayName(name) {
+  try {
+    if (name) localStorage.setItem(DISPLAY_NAME_KEY, name);
+    else localStorage.removeItem(DISPLAY_NAME_KEY);
+  } catch { /* ignore */ }
+}
+
 // ─── Cache localStorage du rôle ──────────────────────────────────────────────
 // Permet de restituer le rôle instantanément au rechargement, sans attendre
 // Supabase (cold-start pouvant dépasser 8–15 s sur le plan gratuit).
@@ -31,20 +45,21 @@ function getCachedRole(userId) {
 }
 
 function setCachedRole(userId, role) {
-  try { localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ uid: userId, role })); } catch {}
+  try { localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ uid: userId, role })); } catch { /* ignore */ }
 }
 
 function clearCachedRole() {
-  try { localStorage.removeItem(ROLE_CACHE_KEY); } catch {}
+  try { localStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
 }
 
 // ─── Contexte ─────────────────────────────────────────────────────────────────
 const UserContext = createContext(null);
 
 export function UserProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [role, setRole]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]             = useState(null);
+  const [role, setRole]             = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [localName, setLocalName]   = useState(() => getLocalDisplayName());
 
   // ─── Chargement du rôle depuis public.user_roles ──────────────────────────
   // `fromCache` = true quand le cache a déjà fourni un rôle valide.
@@ -115,11 +130,18 @@ export function UserProvider({ children }) {
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
-  const displayName = user?.user_metadata?.prenom
+  const displayName = localName
+    || user?.user_metadata?.prenom
     || user?.user_metadata?.name
     || user?.email?.split('@')[0]
     || 'Utilisateur';
-  const initiale    = displayName.charAt(0).toUpperCase();
+  const initiale = displayName.charAt(0).toUpperCase();
+
+  const updateDisplayName = (name) => {
+    const trimmed = name?.trim() || null;
+    saveLocalDisplayName(trimmed);
+    setLocalName(trimmed);
+  };
 
   const logout = () => { clearCachedRole(); supabase.auth.signOut(); };
 
@@ -138,7 +160,7 @@ export function UserProvider({ children }) {
   return (
     <UserContext.Provider value={{
       user, role, displayName, initiale, loading, logout,
-      canAccess, canWrite, isReadOnly,
+      canAccess, canWrite, isReadOnly, updateDisplayName,
     }}>
       {children}
     </UserContext.Provider>

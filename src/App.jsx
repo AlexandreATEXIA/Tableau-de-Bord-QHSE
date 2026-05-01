@@ -162,7 +162,7 @@ const MENU = [
 
 export default function App() {
   const { theme } = useTheme();
-  const { role, canAccess, loading: userLoading, logout, displayName } = useUser();
+  const { role, canAccess, loading: userLoading, logout, displayName, initiale } = useUser();
   const { config } = useConfig();
   const [activeTab, setActiveTab]     = useState('comex');
   const [animKey, setAnimKey]         = useState(0);
@@ -338,11 +338,11 @@ export default function App() {
         {/* User + theme toggle */}
         <div style={{ padding:'12px 14px', borderBottom: 'env(safe-area-inset-bottom) solid transparent', paddingBottom:'max(12px, calc(env(safe-area-inset-bottom) + 12px))', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10 }}>
           <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#4F63E7,#06B6D4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'white', flexShrink:0 }}>
-            {session?.user?.email?.[0]?.toUpperCase() || 'Y'}
+            {initiale}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-              {session?.user?.email?.split('@')[0] || 'Yoann'}
+              {displayName}
             </div>
             <div style={{ fontSize:11, color: ROLES[role]?.color || 'var(--text-3)', fontWeight: 600 }}>
               {ROLES[role]?.label || 'Sans rôle'}
@@ -388,8 +388,8 @@ export default function App() {
               {new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:7, background:'var(--bg-card-2)', border:'1px solid var(--border)', borderRadius:100, padding:'4px 12px 4px 4px' }}>
-              <div style={{ width:26, height:26, background:'linear-gradient(135deg,#4F63E7,#06B6D4)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:'white' }}>Y</div>
-              <span style={{ fontSize:12, fontWeight:500, color:'var(--text-2)' }} className="mobile-hidden">Yoann</span>
+              <div style={{ width:26, height:26, background:'linear-gradient(135deg,#4F63E7,#06B6D4)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:'white' }}>{initiale}</div>
+              <span style={{ fontSize:12, fontWeight:500, color:'var(--text-2)' }} className="mobile-hidden">{displayName}</span>
             </div>
           </div>
         </div>

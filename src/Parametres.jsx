@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useTheme } from './ThemeContext';
 import { useParametres, PARAMS_DEFAULT } from './ParametresContext';
 import { useToast } from './ToastContext';
-import { Settings, Save, RotateCcw, Users, Clock, Bell, Euro, Calendar, Factory, AlertTriangle, TrendingDown } from 'lucide-react';
+import { useUser } from './UserContext';
+import { Settings, Save, RotateCcw, Users, Bell, Factory, AlertTriangle, TrendingDown, User, Palette } from 'lucide-react';
 
 function Section({ icon, title, children, p }) {
   return (
@@ -30,11 +31,14 @@ function Field({ label, help, children }) {
 }
 
 export default function Parametres() {
-  const { p } = useTheme();
+  const { p, theme, setTheme } = useTheme();
   const { params, saveParams } = useParametres();
   const toast = useToast();
+  const { displayName, updateDisplayName } = useUser();
   const [draft, setDraft] = useState({ ...params });
   const [dirty, setDirty] = useState(false);
+  const [draftName, setDraftName] = useState(displayName);
+  const [nameDirty, setNameDirty] = useState(false);
 
   const set = (key, value) => {
     setDraft(d => ({ ...d, [key]: value }));
@@ -64,6 +68,14 @@ export default function Parametres() {
     setDraft({ ...PARAMS_DEFAULT });
     setDirty(true);
     toast.info('Valeurs par défaut restaurées — cliquez sur Enregistrer pour confirmer');
+  };
+
+  const handleSaveName = () => {
+    const trimmed = draftName.trim();
+    if (!trimmed) { toast.error('Le nom affiché ne peut pas être vide'); return; }
+    updateDisplayName(trimmed);
+    setNameDirty(false);
+    toast.success('Nom affiché mis à jour');
   };
 
   const inputStyle = {
@@ -272,6 +284,54 @@ export default function Parametres() {
               ))}
             </div>
           </div>
+        </Section>
+
+        {/* Section 5 — Apparence & Profil */}
+        <Section icon={<Palette size={15}/>} title="Apparence & Profil" p={p}>
+
+          <Field label="Nom affiché" help="Apparaît dans la barre de navigation et la sidebar">
+            <div style={{ display:'flex', gap:8 }}>
+              <input
+                type="text"
+                value={draftName}
+                placeholder="Votre prénom ou nom"
+                onChange={e => { setDraftName(e.target.value); setNameDirty(true); }}
+                style={{ ...inputStyle, flex:1 }}
+                onFocus={e => e.target.style.borderColor = p.blue}
+                onBlur={e => e.target.style.borderColor = p.border2}
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={!nameDirty}
+                style={{ padding:'9px 16px', background: nameDirty ? p.blue : p.whiteFaint, color: nameDirty ? 'white' : p.text4, border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor: nameDirty ? 'pointer' : 'default', transition:'all 0.2s', flexShrink:0 }}
+              >
+                <User size={13} style={{ display:'inline', marginRight:5, verticalAlign:'middle' }}/>OK
+              </button>
+            </div>
+          </Field>
+
+          <Field label="Thème de l'interface" help="Choisissez entre le mode sombre et le mode clair">
+            <div style={{ display:'flex', gap:8 }}>
+              {[{ val:'dark', label:'🌙 Sombre', desc:'Fond très sombre' }, { val:'light', label:'☀️ Clair', desc:'Fond blanc / gris clair' }].map(({ val, label, desc }) => (
+                <button
+                  key={val}
+                  onClick={() => setTheme(val)}
+                  style={{
+                    flex:1, padding:'12px 8px', borderRadius:10,
+                    border:`2px solid ${theme === val ? p.blue : p.border2}`,
+                    background: theme === val ? (val === 'dark' ? 'rgba(59,130,246,0.1)' : 'rgba(79,99,231,0.08)') : p.whiteFaint,
+                    color: theme === val ? p.blue : p.text3,
+                    fontWeight: theme === val ? 700 : 500, fontSize:13, cursor:'pointer',
+                    transition:'all 0.2s', textAlign:'center',
+                  }}
+                >
+                  <div>{label}</div>
+                  <div style={{ fontSize:10, marginTop:3, opacity:0.7 }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          </Field>
+
         </Section>
 
       </div>
