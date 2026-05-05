@@ -6,6 +6,12 @@ const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
+};
+
 /* ── Textes réglementaires à vérifier / injecter ─────────────────────────── */
 const TEXTES_REFERENCE = [
   {
@@ -94,11 +100,10 @@ const TEXTES_REFERENCE = [
   },
 ];
 
-serve(async (_req) => {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Content-Type": "application/json",
-  };
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
     // Récupérer les titres déjà en base
