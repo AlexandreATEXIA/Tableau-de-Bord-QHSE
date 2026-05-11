@@ -6,7 +6,7 @@ import {
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
   PieChart, ClipboardList, Menu, X, LogOut, Archive,
   Truck, ScrollText, Settings, Search, CalendarCheck, ShieldCheck,
-  Lock, Eye, EyeOff, RefreshCw,
+  Lock, Eye, EyeOff, RefreshCw, KeyRound,
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
@@ -124,6 +124,82 @@ function UpdatePasswordScreen({ onDone, onCancel }) {
   );
 }
 
+function ChangerMotDePasseModal({ onClose }) {
+  const [pwd, setPwd]         = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (pwd.length < 8) { setError('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+    if (pwd !== confirm) { setError('Les mots de passe ne correspondent pas.'); return; }
+    setLoading(true);
+    const { error: err } = await supabase.auth.updateUser({ password: pwd });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    setSuccess(true);
+    setTimeout(onClose, 2000);
+  };
+
+  const inp = { width:'100%', padding:'9px 38px 9px 12px', borderRadius:8, background:'var(--bg-input)', border:'1px solid var(--border)', color:'var(--text-1)', fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' };
+  const lbl = { fontSize:11, fontWeight:700, color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:5 };
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+         onClick={onClose}>
+      <div style={{ background:'var(--bg-sidebar)', border:'1px solid var(--border)', borderRadius:16, width:'100%', maxWidth:380, padding:'24px', boxShadow:'0 24px 60px rgba(0,0,0,0.5)' }}
+           onClick={e => e.stopPropagation()}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <KeyRound size={18} style={{ color:'var(--blue)' }}/>
+            <h3 style={{ fontWeight:800, fontSize:16, color:'var(--text-1)', margin:0 }}>Changer le mot de passe</h3>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)' }}><X size={18}/></button>
+        </div>
+
+        {success ? (
+          <div style={{ padding:'16px', borderRadius:10, background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', textAlign:'center' }}>
+            <p style={{ color:'#6EE7B7', fontWeight:700, fontSize:14 }}>✅ Mot de passe mis à jour !</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {[
+              { label:'Nouveau mot de passe', val:pwd, set:setPwd },
+              { label:'Confirmer le mot de passe', val:confirm, set:setConfirm },
+            ].map((f, i) => (
+              <div key={i}>
+                <label style={lbl}>{f.label}</label>
+                <div style={{ position:'relative' }}>
+                  <input type={showPwd ? 'text' : 'password'} value={f.val}
+                    onChange={e => f.set(e.target.value)} required minLength={8}
+                    placeholder="Minimum 8 caractères" style={inp}
+                  />
+                  {i === 0 && (
+                    <button type="button" onClick={() => setShowPwd(v => !v)}
+                      style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--text-4)', display:'flex' }}>
+                      {showPwd ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {error && <div style={{ padding:'8px 12px', borderRadius:8, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', fontSize:12, color:'#FCA5A5' }}>{error}</div>}
+            <button type="submit" disabled={loading}
+              style={{ padding:'11px', borderRadius:9, border:'none', background:loading ? 'rgba(79,99,231,0.3)' : '#4F63E7', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:4 }}>
+              <Lock size={15}/>
+              {loading ? 'Mise à jour...' : 'Enregistrer'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const MENU = [
   {
     section: 'Modules QHSE',
@@ -168,7 +244,8 @@ export default function App() {
   const [animKey, setAnimKey]           = useState(0);
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [session, setSession]           = useState(undefined);
-  const [showInvite, setShowInvite]     = useState(false);
+  const [showInvite, setShowInvite]       = useState(false);
+  const [showChangePwd, setShowChangePwd] = useState(false);
   const [isPwdRecovery, setIsPwdRecovery] = useState(false);
   // Pré-remplissage Plan d'Actions depuis le DUERP
   const [prefillAction, setPrefillAction] = useState(null);
@@ -357,6 +434,10 @@ export default function App() {
               <Users size={14}/>
             </button>
           )}
+          <button onClick={() => setShowChangePwd(true)} title="Changer le mot de passe"
+            style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <KeyRound size={14}/>
+          </button>
           <button onClick={() => supabase.auth.signOut()} title="Se déconnecter"
             style={{ width:30, height:30, borderRadius:7, border:'1px solid var(--border)', background:'var(--bg-card-2)', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <LogOut size={14}/>
@@ -431,6 +512,7 @@ export default function App() {
 
       {/* Modal invitation utilisateur (admin uniquement) */}
       {showInvite && estAdmin && <GestionUtilisateurs onClose={() => setShowInvite(false)} />}
+      {showChangePwd && <ChangerMotDePasseModal onClose={() => setShowChangePwd(false)} />}
     </div>
   );
 }
