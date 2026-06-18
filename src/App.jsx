@@ -6,7 +6,7 @@ import {
   ChevronRight, Target, Calendar, FileSpreadsheet, BookOpen,
   PieChart, ClipboardList, Menu, X, LogOut, Archive,
   Truck, ScrollText, Settings, Search, CalendarCheck, ShieldCheck,
-  Lock, Eye, EyeOff, RefreshCw, KeyRound,
+  Lock, Eye, EyeOff, RefreshCw, KeyRound, UserPlus,
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import LoginPage from './LoginPage';
@@ -39,6 +39,7 @@ import Parametres            from './Parametres';
 import RechercheGlobale      from './RechercheGlobale';
 import ReunionsQHSE          from './ReunionsQHSE';
 import RGPDModule            from './RGPDModule';
+import ParcoursAccueil       from './ParcoursAccueil';
 
 function UpdatePasswordScreen({ onDone, onCancel }) {
   const [pwd, setPwd]         = useState('');
@@ -210,6 +211,7 @@ const MENU = [
       { id:'qualite',     label:'Qualité & Audits',     icon:CheckCircle },
       { id:'env',         label:'Environnement',        icon:Leaf },
       { id:'rh',          label:'Social & RH',          icon:Users },
+      { id:'parcours',    label:"Parcours d'accueil",   icon:UserPlus,      badge:'NEW', badgeClass:'amber' },
       { id:'pdca',        label:"Plan d'Actions",       icon:FileText },
       { id:'calendrier',  label:'Calendrier QHSE',      icon:Calendar,      badge:'NEW', badgeClass:'blue' },
       { id:'veille',      label:'Veille Réglementaire', icon:BookOpen,      badge:'NEW', badgeClass:'green' },
@@ -486,6 +488,7 @@ export default function App() {
             {activeTab === 'qualite'       && <QualiteAudits onNavigateToPdca={data => { setPrefillAction(data); handleTab('pdca'); }} />}
             {activeTab === 'env'           && <Environnement />}
             {activeTab === 'rh'            && <SocialRH />}
+            {activeTab === 'parcours'      && <ParcoursAccueil />}
             {activeTab === 'pdca'          && <PlanActions prefill={prefillAction} onPrefillConsumed={() => setPrefillAction(null)} />}
             {activeTab === 'calendrier'    && <CalendrierQHSE />}
             {activeTab === 'veille'        && <VeilleReglementaire />}
