@@ -344,7 +344,7 @@ export default function ParcoursAccueil() {
     const prog = progression(js);
     return (
       <div>
-        <button onClick={() => setSelId(null)} className="btn-ghost" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => setSelId(null)} className="btn-secondary" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
           <ChevronLeft size={16} /> Retour à la liste
         </button>
         <div className="glass-panel p-6" style={{ marginBottom: 16 }}>
@@ -381,11 +381,11 @@ export default function ParcoursAccueil() {
                 <WriteOnly>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {j.statut !== 'Fait' &&
-                      <button title="Marquer fait" className="btn-icon" onClick={() => majJalon(j, { statut: 'Fait', date_realisation: TODAY() })}><Check size={16} /></button>}
+                      <button title="Marquer fait" className="btn-secondary" onClick={() => majJalon(j, { statut: 'Fait', date_realisation: TODAY() })}><Check size={16} /></button>}
                     {j.statut !== 'Non applicable' &&
-                      <button title="Non applicable" className="btn-icon" onClick={() => majJalon(j, { statut: 'Non applicable', date_realisation: null })}><Ban size={16} /></button>}
+                      <button title="Non applicable" className="btn-secondary" onClick={() => majJalon(j, { statut: 'Non applicable', date_realisation: null })}><Ban size={16} /></button>}
                     {j.statut !== 'À faire' &&
-                      <button title="Rouvrir" className="btn-icon" onClick={() => majJalon(j, { statut: 'À faire', date_realisation: null })}><RotateCcw size={16} /></button>}
+                      <button title="Rouvrir" className="btn-secondary" onClick={() => majJalon(j, { statut: 'À faire', date_realisation: null })}><RotateCcw size={16} /></button>}
                   </div>
                 </WriteOnly>
               </div>
@@ -411,7 +411,7 @@ export default function ParcoursAccueil() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {['En cours', 'Terminé', 'Abandonné', 'Tous'].map(f => (
-          <button key={f} className={filtre === f ? 'btn-secondary' : 'btn-ghost'} onClick={() => setFiltre(f)}>{f}</button>
+          <button key={f} className={filtre === f ? 'btn-primary' : 'btn-secondary'} onClick={() => setFiltre(f)}>{f}</button>
         ))}
       </div>
 
@@ -475,7 +475,7 @@ function StartModal({ onClose, onCreate, p, toast }) {
       <div className="glass-panel p-6" style={{ width: 420, maxWidth: '90vw' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ color: p.text1, fontWeight: 700 }}>Démarrer un parcours</h3>
-          <button className="btn-icon" onClick={onClose}><X size={18} /></button>
+          <button className="btn-secondary" onClick={onClose}><X size={18} /></button>
         </div>
         <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: p.text2, display: 'block', marginBottom: 4 }}>Salarié</label>
         <select className="input-modern" value={empId} onChange={e => onPick(e.target.value)} style={{ width: '100%', marginBottom: 14 }}>
@@ -485,7 +485,7 @@ function StartModal({ onClose, onCreate, p, toast }) {
         <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: p.text2, display: 'block', marginBottom: 4 }}>Date de début (date d'entrée pré-remplie)</label>
         <input type="date" className="input-modern" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={{ width: '100%', marginBottom: 18 }} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn-ghost" onClick={onClose}>Annuler</button>
+          <button className="btn-secondary" onClick={onClose}>Annuler</button>
           <button className="btn-primary" onClick={valider}>Démarrer</button>
         </div>
       </div>
@@ -721,14 +721,14 @@ function JalonsModeleEditor({ p, toast }) {
             <label style={{ fontSize: 12, color: p.text2, display: 'flex', alignItems: 'center', gap: 4 }}>
               <input type="checkbox" checked={!!r.actif} onChange={e => setRow(i, 'actif', e.target.checked)} /> actif
             </label>
-            <button className="btn-icon" onClick={() => supprimer(i)} title="Supprimer"><Trash2 size={16} /></button>
+            <button className="btn-secondary" onClick={() => supprimer(i)} title="Supprimer"><Trash2 size={16} /></button>
           </div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         <button className="btn-secondary" onClick={ajouter} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={16} /> Ajouter un jalon</button>
         <button className="btn-primary" onClick={enregistrer}>Enregistrer</button>
-        <button className="btn-ghost" onClick={restaurer}>Restaurer le modèle par défaut</button>
+        <button className="btn-secondary" onClick={restaurer}>Restaurer le modèle par défaut</button>
       </div>
     </div>
   );
