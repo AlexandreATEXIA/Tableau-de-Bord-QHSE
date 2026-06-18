@@ -116,16 +116,17 @@ Cliquez **"Run"** (bouton vert en bas à droite ou Ctrl+Entrée).
 
 → Vous devez voir un message **"Success. No rows returned"** en vert. Si vous voyez du rouge, recommencez le copier-coller (oubli d'un caractère).
 
-### 2.3 — Appliquer les 4 migrations
+### 2.3 — Appliquer les 5 migrations
 
 Dans le ZIP de l'application que vous avez reçu, ouvrez le dossier `db/migrations/`. Vous y voyez plusieurs fichiers `.sql`.
 
-**Vous appliquerez UNIQUEMENT ces 4 fichiers, DANS L'ORDRE** :
+**Vous appliquerez UNIQUEMENT ces 5 fichiers, DANS L'ORDRE** :
 
 1. `00000000000000_baseline_schema.sql` ← **Le plus important — crée toutes les tables**
 2. `20260425000001_etape_b1_listes_referentiel.sql`
 3. `20260425000002_etape_e1_user_roles_auth.sql`
 4. `20260425000003_etape_e7_rls_tables_metier.sql`
+5. `20260618000001_parcours_accueil.sql`  ← module Parcours d'accueil (3 tables + jalons par défaut)
 
 ⚠️ **NE PAS appliquer les fichiers `20260424...`** — ils sont historiques (ajouts progressifs au schéma) et leurs apports sont déjà inclus dans le baseline.
 

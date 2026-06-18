@@ -32,6 +32,7 @@ supabase db push
 
 1. `20260424000001_lot5_phase1_quickwins.sql` — sécurité (search_path, bucket)
 2. `20260424000002_lot6_phase1_rgpd_fondations.sql` — colonnes RGPD + table demandes
+3. `20260618000001_parcours_accueil.sql` — module Parcours d'accueil (tables + RLS + seed)
 
 ## Action console (non scriptable)
 
