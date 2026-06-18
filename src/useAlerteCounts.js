@@ -7,7 +7,7 @@ export function useAlerteCounts() {
 
   const refresh = useCallback(async () => {
     const now = new Date().toISOString().split('T')[0];
-    const [r1, r2, r3, r4, r5] = await Promise.all([
+    const [r1, r2, r3, r4, r5, r6] = await Promise.all([
       // accidents non clôturés (actifs uniquement)
       supabase.from('securite_accidents').select('id', { count: 'exact', head: true })
         .neq('statut_enquete', 'Clôturée').is('archived_at', null),
@@ -22,6 +22,13 @@ export function useAlerteCounts() {
         .neq('statut_nc', 'Clôturée').is('archived_at', null),
       // habilitations périmées actives
       supabase.from('habilitations').select('id,obtention,validiteAns').is('archived_at', null),
+      // jalons de parcours en cours, échus et non faits
+      supabase.from('parcours_jalons')
+        .select('id, date_echeance, statut, parcours_accueil!inner(statut, archived_at)')
+        .eq('statut', 'À faire')
+        .lte('date_echeance', now)
+        .eq('parcours_accueil.statut', 'En cours')
+        .is('parcours_accueil.archived_at', null),
     ]);
 
     const now2 = new Date();
@@ -47,6 +54,7 @@ export function useAlerteCounts() {
       qualite:   r4.count || 0,
       rh:        habsExpired + habsSoon,
       rhCritical: habsExpired,
+      parcours:  r6.count ?? (r6.data ? r6.data.length : 0),
     });
   }, []);
 

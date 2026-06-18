@@ -331,6 +331,7 @@ export default function App() {
     duerp:     counts.duerp,
     qualite:   counts.qualite,
     rh:        counts.rh,
+    parcours:  counts.parcours,
   };
   const ALERT_CRITICAL = { accidents: true, duerp: true, rh: counts.rhCritical > 0 };
 
