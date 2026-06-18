@@ -2,12 +2,18 @@
 
 // Calcule la date d'échéance (YYYY-MM-DD) d'un jalon à partir d'une date
 // de début et d'un délai. 'mois' = mois calendaire ; 'jours' = jours.
+// Calcul purement local (composants Y/M/D) pour éviter tout décalage de
+// fuseau horaire que provoquerait toISOString().
 export function computeEcheance(dateDebut, delaiValeur, delaiUnite) {
-  const d = new Date(`${dateDebut}T00:00:00`);
+  const [y, m, d] = dateDebut.split('-').map(Number);
   const n = Number(delaiValeur) || 0;
-  if (delaiUnite === 'mois') d.setMonth(d.getMonth() + n);
-  else d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const dt = new Date(y, m - 1, d);
+  if (delaiUnite === 'mois') dt.setMonth(dt.getMonth() + n);
+  else dt.setDate(dt.getDate() + n);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 
 // Progression d'un parcours : un jalon est "traité" s'il est Fait ou Non applicable.
