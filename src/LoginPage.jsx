@@ -59,7 +59,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <img src="/logo-atexia.png" alt="ATEXIA" style={{ height:64, margin: '0 auto 14px', display:'block', objectFit:'contain' }} />
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>DEF Réunion</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>ATEXIA Systemes</div>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#4F63E7', letterSpacing: '0.1em', marginTop: 3, textTransform: 'uppercase' }}>SMI Dashboard Pro</div>
         </div>
 
