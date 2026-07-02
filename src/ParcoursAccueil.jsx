@@ -92,7 +92,7 @@ export default function ParcoursAccueil() {
     const pc = parcours.find(x => x.id === jalon.parcours_id);
     if (pc && pc.statut === 'En cours' && parcoursEstTermine(jalonsParcours)) {
       await supabase.from('parcours_accueil').update({ statut: 'Terminé' }).eq('id', pc.id);
-      setParcours(parcours.map(x => x.id === pc.id ? { ...x, statut: 'Terminé' } : x));
+      setParcours(prev => prev.map(x => x.id === pc.id ? { ...x, statut: 'Terminé' } : x));
       toast.success('Parcours terminé — tous les jalons sont traités');
     }
   };
@@ -100,7 +100,7 @@ export default function ParcoursAccueil() {
   const changerStatutParcours = async (pc, statut) => {
     const { error } = await supabase.from('parcours_accueil').update({ statut }).eq('id', pc.id);
     if (error) { toast.error('Erreur'); return; }
-    setParcours(parcours.map(x => x.id === pc.id ? { ...x, statut } : x));
+    setParcours(prev => prev.map(x => x.id === pc.id ? { ...x, statut } : x));
     toast.success(`Parcours : ${statut}`);
   };
 

@@ -5,6 +5,7 @@ import { useToast } from './ToastContext';
 import { useUser } from './UserContext';
 import { Settings, Save, RotateCcw, Users, Bell, Factory, AlertTriangle, TrendingDown, User, Palette, Plus, Trash2, UserPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { WriteOnly, useCanWrite } from './WriteGuard';
 
 function Section({ icon, title, children, p }) {
   return (

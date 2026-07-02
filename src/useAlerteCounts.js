@@ -31,6 +31,13 @@ export function useAlerteCounts() {
         .is('parcours_accueil.archived_at', null),
     ]);
 
+    // Filtrage client défensif : on ne compte que les jalons dont le parcours
+    // est bien « En cours » et non archivé, quel que soit le comportement du
+    // filtre PostgREST sur table jointe (!inner).
+    const parcoursAlertes = (r6.data || []).filter(j =>
+      j.parcours_accueil && j.parcours_accueil.statut === 'En cours' && !j.parcours_accueil.archived_at
+    ).length;
+
     const now2 = new Date();
     const habsExpired = (r5.data || []).filter(h => {
       if (!h.obtention) return false;
@@ -54,7 +61,7 @@ export function useAlerteCounts() {
       qualite:   r4.count || 0,
       rh:        habsExpired + habsSoon,
       rhCritical: habsExpired,
-      parcours:  r6.count ?? (r6.data ? r6.data.length : 0),
+      parcours:  parcoursAlertes,
     });
   }, []);
 

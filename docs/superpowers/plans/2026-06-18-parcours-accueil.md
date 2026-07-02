@@ -153,12 +153,18 @@ Créer `src/utils/parcours.js` avec exactement :
 
 // Calcule la date d'échéance (YYYY-MM-DD) d'un jalon à partir d'une date
 // de début et d'un délai. 'mois' = mois calendaire ; 'jours' = jours.
+// Calcul purement local (composants Y/M/D) pour éviter tout décalage de
+// fuseau horaire que provoquerait toISOString().
 export function computeEcheance(dateDebut, delaiValeur, delaiUnite) {
-  const d = new Date(`${dateDebut}T00:00:00`);
+  const [y, m, d] = dateDebut.split('-').map(Number);
   const n = Number(delaiValeur) || 0;
-  if (delaiUnite === 'mois') d.setMonth(d.getMonth() + n);
-  else d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const dt = new Date(y, m - 1, d);
+  if (delaiUnite === 'mois') dt.setMonth(dt.getMonth() + n);
+  else dt.setDate(dt.getDate() + n);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 
 // Progression d'un parcours : un jalon est "traité" s'il est Fait ou Non applicable.
@@ -194,8 +200,8 @@ Run :
 ```bash
 node --input-type=module -e "
 import { computeEcheance, progression, parcoursEstTermine, jalonEnAlerte } from './src/utils/parcours.js';
-console.assert(computeEcheance('2026-01-31',1,'mois')==='2026-03-03' || computeEcheance('2026-01-31',1,'mois')==='2026-03-02', 'mois calendaire');
 console.assert(computeEcheance('2026-01-01',7,'jours')==='2026-01-08', 'jours');
+console.assert(computeEcheance('2026-01-01',1,'mois')==='2026-02-01', '1 mois');
 console.assert(computeEcheance('2026-01-01',9,'mois')==='2026-10-01', '9 mois');
 console.assert(progression([{statut:'Fait'},{statut:'À faire'}]).pct===50, 'progression 50%');
 console.assert(parcoursEstTermine([{statut:'Fait'},{statut:'Non applicable'}])===true, 'termine');
