@@ -123,6 +123,32 @@ function ProgressBar({ pct, statut, isDark }) {
   );
 }
 
+/* ─── Zone de texte auto-extensible ─────────────────────────────────────────── */
+// Textarea dont la hauteur s'ajuste au contenu (évite le texte tronqué sur une
+// seule ligne dans le tableau). Recalcule la hauteur à chaque changement de valeur.
+function AutoTextarea({ value, onChange, onBlur, placeholder, style }) {
+  const ref = useRef(null);
+  const resize = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(() => { resize(); }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      onBlur={onBlur}
+      onInput={resize}
+      placeholder={placeholder}
+      rows={1}
+      style={{ ...style, resize: 'none', overflow: 'hidden', lineHeight: 1.4 }}
+    />
+  );
+}
+
 /* ─── Formulaire par défaut ─────────────────────────────────────────────────── */
 const mkForm = (domaines, origines) => ({
   origine:     origines[0],
@@ -607,7 +633,7 @@ export default function PlanActions({ prefill, onPrefillConsumed }) {
               <thead>
                 <tr>
                   <th style={{ width: 110 }}>Domaine / Type</th>
-                  <th style={{ minWidth: 200 }}>Description</th>
+                  <th style={{ minWidth: 240 }}>Description</th>
                   <th style={{ width: 110 }}>Pilote</th>
                   <th style={{ width: 120 }}>Échéance</th>
                   <th style={{ width: 120 }}>Avancement</th>
@@ -648,12 +674,19 @@ export default function PlanActions({ prefill, onPrefillConsumed }) {
 
                       {/* Description */}
                       <td>
-                        <input type="text" value={row.action || ''}
+                        <AutoTextarea value={row.action || ''}
                           onChange={e => updateRow(row.id, 'action', e.target.value)}
                           onBlur={() => saveRowById(row.id)}
-                          style={{ ...inp, fontSize: 13, fontWeight: 500, marginBottom: 2 }}/>
+                          placeholder="Action à mettre en place..."
+                          style={{ ...inp, fontSize: 13, fontWeight: 500, marginBottom: 6 }}/>
+                        <label style={{ fontSize: 9, fontWeight: 700, color: p.text4, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 2 }}>Description générale</label>
+                        <AutoTextarea value={row.commentaire || ''}
+                          onChange={e => updateRow(row.id, 'commentaire', e.target.value)}
+                          onBlur={() => saveRowById(row.id)}
+                          placeholder="Description de l'anomalie / du risque..."
+                          style={{ ...inp, fontSize: 11, color: p.text2, marginBottom: 4 }}/>
                         {row.cause_racine && (
-                          <p style={{ fontSize: 10, color: p.text4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
+                          <p style={{ fontSize: 10, color: p.text4, fontStyle: 'italic' }}>
                             Cause : {row.cause_racine}
                           </p>
                         )}
