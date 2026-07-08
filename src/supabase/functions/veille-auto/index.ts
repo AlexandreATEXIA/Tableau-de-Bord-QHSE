@@ -3,14 +3,14 @@
 // Veille réglementaire QHSE RÉELLE.
 //  1. Lit des flux RSS/Atom publics et gratuits de sources QHSE.
 //  2. Écarte les doublons (déjà en base) et le hors-sujet (pré-filtre mots-clés).
-//  3. Analyse chaque nouveauté avec Claude (Haiku) : pertinence, domaine,
+//  3. Analyse chaque nouveauté avec Mistral (mistral-small) : pertinence, domaine,
 //     résumé, impact.
 //  4. Insère les textes pertinents dans la table `veille_reglementaire`.
 //
 // Contexte métier : ATEXIA Systèmes — installation électrique & sûreté, La Réunion.
 //
 // Secrets requis (Supabase → Edge Functions → veille-auto → Secrets) :
-//   - ANTHROPIC_API_KEY        (clé API Anthropic — à ajouter)
+//   - MISTRAL_API_KEY          (clé API Mistral — à ajouter)
 //   - SUPABASE_URL             (fourni automatiquement par Supabase)
 //   - SUPABASE_SERVICE_ROLE_KEY(fourni automatiquement par Supabase)
 //
@@ -22,7 +22,7 @@ import { XMLParser } from "https://esm.sh/fast-xml-parser@4";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const MISTRAL_KEY = Deno.env.get("MISTRAL_API_KEY") ?? "";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -152,22 +152,23 @@ async function analyser(titre: string, extrait: string): Promise<{ pertinent: bo
     '  "impact": un de "Élevé","Moyen","Faible"\n' +
     "}";
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01",
+      "authorization": `Bearer ${MISTRAL_KEY}`,
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5",
+      model: "mistral-small-latest",
       max_tokens: 400,
+      temperature: 0,
+      response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic ${res.status} : ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`Mistral ${res.status} : ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
-  const txt = (data.content || []).filter((b: Record<string, unknown>) => b.type === "text").map((b: Record<string, unknown>) => b.text).join("");
+  const txt = data?.choices?.[0]?.message?.content ?? "";
   try {
     const j = JSON.parse(extraireJson(txt));
     return {
@@ -186,9 +187,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!ANTHROPIC_KEY) {
+    if (!MISTRAL_KEY) {
       return new Response(
-        JSON.stringify({ success: false, message: "Secret ANTHROPIC_API_KEY manquant sur la fonction veille-auto." }),
+        JSON.stringify({ success: false, message: "Secret MISTRAL_API_KEY manquant sur la fonction veille-auto." }),
         { status: 200, headers: corsHeaders },
       );
     }
