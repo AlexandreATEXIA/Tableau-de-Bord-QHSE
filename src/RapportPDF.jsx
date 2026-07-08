@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
 import { FileText, Download, Loader, CheckCircle, Settings, Building2, Calendar, FileDown } from 'lucide-react';
 import { safeMean, safeNumber, calcExpiration, diffJours } from './utils/kpi';
+import RapportAnalyseIA from './RapportAnalyseIA';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // statHab : 'nd' si date d'obtention OU durée de validité non renseignée/invalide
@@ -309,6 +310,9 @@ export default function RapportPDF() {
           </button>
         </div>
       </header>
+
+      {/* Analyse QHSE par IA → document Word */}
+      <RapportAnalyseIA />
 
       {/* Paramètres entreprise */}
       {showCfg && (
