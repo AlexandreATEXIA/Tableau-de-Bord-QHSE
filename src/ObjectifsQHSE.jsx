@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { useTheme } from './ThemeContext';
 import { useConfig } from './ConfigContext';
-import { tauxAtteinteObjectif } from './utils/kpi';
+import { tauxAtteinteObjectif, safeNumber, safeMean } from './utils/kpi';
 import { WriteOnly } from './WriteGuard';
 import {
   Target, Plus, Edit2, Trash2, Save, X, CheckCircle,
   AlertTriangle, TrendingUp, TrendingDown, ShieldAlert,
-  HeartPulse, Leaf, Users, Award, RefreshCw, ChevronDown, ChevronUp
+  HeartPulse, Leaf, Users, Award, RefreshCw, ChevronDown, ChevronUp,
+  Clock, AlertOctagon
 } from 'lucide-react';
 
 const ANNEE = new Date().getFullYear();
@@ -31,6 +32,49 @@ const OBJECTIFS_DEFAUT = [
   { categorie:'rh',            titre:'Taux de formation',          description:'% d\'employés ayant suivi au moins 1 formation',  valeur_cible:80,  unite:'%',   sens:'max' },
   { categorie:'rh',            titre:'Absentéisme',                description:'Taux d\'absentéisme annuel',                      valeur_cible:3,   unite:'%',   sens:'min' },
 ];
+
+/* ─── Normalisation robuste des libellés ───────────────────────────────────
+   minuscules · sans accents · sans ponctuation · espaces normalisés · trim.
+   « Taux de fréquence (TF) », « taux de frequence tf » → même clé normalisée. */
+function normaliser(s) {
+  return String(s ?? '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')  // retire les accents
+    .replace(/[^a-z0-9]+/g, ' ')                        // retire la ponctuation
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+/* ─── Catalogue explicite des indicateurs calculés automatiquement ──────────
+   Chaque entrée relie un libellé d'objectif à la clé calculée dans reelData
+   (chargerDonneesReelles). `aliases` couvre les variantes d'écriture fréquentes.
+   `categorie` = domaine source de l'indicateur (affiché comme « auto · … »). */
+const CATALOGUE_AUTO = [
+  { key:'accidents_arret',       libelle:'Accidents avec arrêt',   categorie:'securite', unite:'AT',  aliases:['accidents arret','at avec arret','accidents avec arret de travail'] },
+  { key:'tf',                    libelle:'Taux de fréquence (TF)', categorie:'securite', unite:'TF',  aliases:['taux de frequence','tf','taux frequence'] },
+  { key:'tg',                    libelle:'Taux de gravité (TG)',   categorie:'securite', unite:'',    aliases:['taux de gravite','tg','taux gravite'] },
+  { key:'habilitations_pct',     libelle:'Habilitations à jour',   categorie:'securite', unite:'%',   aliases:['habilitations','taux habilitations','habilitations valides'] },
+  { key:'nc_cloturees_pct',      libelle:'NC clôturées',           categorie:'qualite',  unite:'%',   aliases:['nc cloturees','non conformites cloturees','taux nc','taux de cloture nc'] },
+  { key:'score_audit',           libelle:'Score audit moyen',      categorie:'qualite',  unite:'%',   aliases:['score audit','score audits','score moyen audit'] },
+  { key:'actions_terminees_pct', libelle:'Actions PDCA terminées', categorie:'qualite',  unite:'%',   aliases:['actions pdca terminees','actions terminees','plan actions','taux actions'] },
+  { key:'satisfaction_moyenne',  libelle:'Satisfaction client',    categorie:'qualite',  unite:'/10', aliases:['satisfaction','satisfaction moyenne','satisfaction client','note satisfaction'] },
+  { key:'formation_pct',         libelle:'Taux de formation',      categorie:'rh',       unite:'%',   aliases:['taux de formation','formation','taux formation'] },
+];
+
+/* Index normalisé (libellé + alias) → entrée du catalogue, construit une fois. */
+const AUTO_PAR_TITRE = (() => {
+  const m = new Map();
+  CATALOGUE_AUTO.forEach(e => {
+    m.set(normaliser(e.libelle), e);
+    (e.aliases || []).forEach(a => m.set(normaliser(a), e));
+  });
+  return m;
+})();
+
+/* Entrée catalogue correspondant à un objectif (matching normalisé, pas d'égalité stricte). */
+function getEntreeAuto(obj) {
+  return AUTO_PAR_TITRE.get(normaliser(obj?.titre)) || null;
+}
 
 /* ─── Jauge circulaire SVG ─────────────────────────────────────────────── */
 function JaugeCirculaire({ pct, color, size = 90, statut }) {
@@ -139,7 +183,7 @@ function FormulaireObjectif({ initial, onSave, onCancel, p }) {
 /* ─── Composant principal ─────────────────────────────────────────────── */
 
 /* ─── Ligne objectif (composant isolé pour respecter les règles des hooks) ── */
-function ObjectifRow({ obj, cat, isDark, p, onEdit, onDelete, onSaveVal, getPct, getStatut, getValeurReelle }) {
+function ObjectifRow({ obj, cat, isDark, p, enRisque, onEdit, onDelete, onSaveVal, getPct, getStatut, getValeurReelle }) {
   const [editVal, setEditVal]     = useState(String(obj.valeur_reelle ?? ''));
   const [editingVal, setEditingVal] = useState(false);
 
@@ -148,9 +192,16 @@ function ObjectifRow({ obj, cat, isDark, p, onEdit, onDelete, onSaveVal, getPct,
   const reelAuto = getValeurReelle(obj);
   const reelAffiche = reelAuto !== null ? reelAuto : (obj.valeur_reelle ?? null);
   const isAuto   = reelAuto !== null;
+  const entree   = getEntreeAuto(obj);
+  const sourceAuto = entree ? (CATEGORIES.find(c => c.id === entree.categorie)?.label || '') : '';
 
   return (
-    <div style={{ background:p.bgCard2, border:`1px solid ${p.border}`, borderRadius:14, padding:'16px 18px' }}>
+    <div style={{
+      background:p.bgCard2,
+      border:`1px solid ${enRisque ? 'var(--amber)' : p.border}`,
+      borderLeft:`3px solid ${enRisque ? 'var(--amber)' : p.border}`,
+      borderRadius:14, padding:'16px 18px'
+    }}>
       <div style={{ display:'flex', gap:16, alignItems:'center' }}>
         {/* Jauge */}
         <div style={{ position:'relative', width:90, height:90, flexShrink:0 }}>
@@ -193,7 +244,10 @@ function ObjectifRow({ obj, cat, isDark, p, onEdit, onDelete, onSaveVal, getPct,
               {isAuto ? (
                 <span style={{ fontSize:13, fontWeight:800, color:isDark?cat.color:cat.colorL }}>
                   {reelAffiche} {obj.unite}
-                  <span style={{ fontSize:10, color:p.text4, marginLeft:4, fontWeight:500 }}>auto</span>
+                  <span style={{ fontSize:10, color:p.text4, marginLeft:4, fontWeight:600 }}
+                    title={`Indicateur calculé automatiquement — source : ${sourceAuto}`}>
+                    auto{sourceAuto ? ` · ${sourceAuto}` : ''}
+                  </span>
                 </span>
               ) : editingVal ? (
                 <div style={{ display:'flex', gap:4 }}>
@@ -229,6 +283,9 @@ export default function ObjectifsQHSE() {
   const [annee, setAnnee]           = useState(ANNEE);
   const [catFilter, setCatFilter]   = useState('tous');
   const [expandedCat, setExpandedCat] = useState(new Set(['securite','qualite','environnement','rh']));
+  const [seuilRisque, setSeuilRisque] = useState(70);   // % d'avancement sous lequel un objectif est « en danger »
+  const [filtreRisque, setFiltreRisque] = useState(false); // filtre la liste sur la zone de risque
+  const [lastUpdate, setLastUpdate]   = useState(null);  // horodatage du dernier recalcul des indicateurs
 
   /* ── Charger objectifs depuis Supabase ── */
   async function chargerObjectifs() {
@@ -243,9 +300,11 @@ export default function ObjectifsQHSE() {
       // Accidents
       const { data: acc } = await supabase.from('securite_accidents').select('type_evenement, jours_perdus').is('archived_at', null);
       const atArret = (acc||[]).filter(a => a.type_evenement === 'Accident avec arrêt').length;
+      const joursPerdus = (acc||[]).reduce((s,a) => s + safeNumber(a.jours_perdus, 0), 0);
       const totalH = (config.effectif || 50) * (config.h_an || 1607);
       real.accidents_arret = atArret;
       real.tf = totalH > 0 ? Math.round(atArret * 1e6 / totalH * 10) / 10 : 0;
+      real.tg = totalH > 0 ? Math.round(joursPerdus * 1000 / totalH * 100) / 100 : 0;
 
       // Habilitations
       const { data: habs } = await supabase.from('habilitations').select('obtention, validiteAns').is('archived_at', null);
@@ -286,8 +345,14 @@ export default function ObjectifsQHSE() {
       formsTerminees.forEach(f => (f.participants||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(p2=>participants.add(p2)));
       real.formation_pct = empTotal > 0 ? Math.round(Math.min(participants.size / empTotal * 100, 100)) : 0;
 
+      // Satisfaction client (note globale /10) — laissée absente si aucune enquête
+      const { data: sat } = await supabase.from('qualite_satisfaction').select('note_globale');
+      const moySat = safeMean(sat, s => s.note_globale);
+      if (moySat.hasData) real.satisfaction_moyenne = Math.round(moySat.value * 10) / 10;
+
     } catch(e) { console.warn('Erreur données réelles:', e); }
     setReelData(real);
+    setLastUpdate(new Date());
   }
 
   useEffect(() => {
@@ -307,21 +372,11 @@ export default function ObjectifsQHSE() {
     init();
   }, [annee]);
 
-  /* ── Mapper les valeurs réelles sur les objectifs ── */
-  const keyMap = {
-    'Accidents avec arrêt':     'accidents_arret',
-    'Taux de fréquence (TF)':   'tf',
-    'Habilitations à jour':     'habilitations_pct',
-    'NC clôturées':             'nc_cloturees_pct',
-    'Score audit moyen':        'score_audit',
-    'Actions PDCA terminées':   'actions_terminees_pct',
-    'Taux de formation':        'formation_pct',
-  };
-
+  /* ── Mapper les valeurs réelles sur les objectifs (matching robuste via catalogue) ── */
   function getValeurReelle(obj) {
-    const key = keyMap[obj.titre];
-    if (key !== undefined && reelData[key] !== undefined) return reelData[key];
-    return null; // pas de données auto → saisie manuelle
+    const e = getEntreeAuto(obj);
+    if (e && reelData[e.key] !== undefined && reelData[e.key] !== null) return reelData[e.key];
+    return null; // pas d'indicateur auto correspondant → saisie manuelle
   }
 
   function getPct(obj) {
@@ -335,8 +390,14 @@ export default function ObjectifsQHSE() {
     const reel = getValeurReelle(obj) ?? obj.valeur_reelle;
     if (reel === null || reel === undefined) return 'non-demarre';
     if (pct >= 100) return 'atteint';
-    if (pct >= 70)  return 'en-cours';
+    if (pct >= seuilRisque) return 'en-cours';
     return 'danger';
+  }
+
+  /* Zone de risque : objectif en danger (avancement < seuil) OU non démarré. */
+  function estEnRisque(obj) {
+    const statut = getStatut(getPct(obj), obj);
+    return statut === 'danger' || statut === 'non-demarre';
   }
 
   /* ── Stats synthèse ── */
@@ -350,10 +411,11 @@ export default function ObjectifsQHSE() {
       enCours:     all.filter(s=>s==='en-cours').length,
       danger:      all.filter(s=>s==='danger').length,
       nonDemarre:  all.filter(s=>s==='non-demarre').length,
+      enRisque:    all.filter(s=>s==='danger' || s==='non-demarre').length,
       total:       all.length,
       scoreMoyen:  all.length ? Math.round(objectifs.reduce((s,o)=>s+getPct(o),0)/objectifs.length) : 0,
     };
-  }, [objectifs, reelData]);
+  }, [objectifs, reelData, seuilRisque]);
 
   /* ── CRUD ── */
   async function sauvegarder(form) {
@@ -377,7 +439,9 @@ export default function ObjectifsQHSE() {
     await chargerObjectifs();
   }
 
-  const objFiltres = catFilter === 'tous' ? objectifs : objectifs.filter(o=>o.categorie===catFilter);
+  const objEnRisque = objectifs.filter(estEnRisque);
+  let objFiltres = catFilter === 'tous' ? objectifs : objectifs.filter(o=>o.categorie===catFilter);
+  if (filtreRisque) objFiltres = objFiltres.filter(estEnRisque);
 
   const toggleCat = (id) => setExpandedCat(prev => {
     const next = new Set(prev);
@@ -395,6 +459,12 @@ export default function ObjectifsQHSE() {
           <div className="page-subtitle">Suivez vos engagements {annee} — progression calculée en temps réel</div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {lastUpdate && (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, color:p.text3, whiteSpace:'nowrap' }}
+              title="Heure du dernier recalcul des indicateurs automatiques">
+              <Clock size={12}/> Indicateurs mis à jour à {lastUpdate.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
+            </span>
+          )}
           <select value={annee} onChange={e=>setAnnee(Number(e.target.value))} className="input-modern" style={{ width:100 }}>
             {[2024,2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
           </select>
@@ -419,19 +489,107 @@ export default function ObjectifsQHSE() {
         </div>
       )}
 
+      {/* ── Bandeau zone de risque ── */}
+      {!loading && (
+        <div className="animate-fade-up-1" style={{
+          borderRadius:16, padding:'16px 18px',
+          border:`1px solid ${objEnRisque.length ? 'var(--amber)' : 'rgba(16,185,129,0.40)'}`,
+          background: objEnRisque.length
+            ? (isDark ? 'rgba(245,158,11,0.10)' : '#FFFBEB')
+            : (isDark ? 'rgba(16,185,129,0.08)' : '#ECFDF5'),
+        }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              {objEnRisque.length
+                ? <AlertOctagon size={20} style={{ color:'var(--amber)', flexShrink:0 }}/>
+                : <CheckCircle size={20} style={{ color:'#10B981', flexShrink:0 }}/>}
+              <div>
+                <div style={{ fontSize:14, fontWeight:800, color: objEnRisque.length ? 'var(--amber)' : '#10B981' }}>
+                  {objEnRisque.length
+                    ? `Zone de risque — ${objEnRisque.length} objectif${objEnRisque.length>1?'s':''} à surveiller`
+                    : '✓ Tous les objectifs sont sur la bonne voie'}
+                </div>
+                <div style={{ fontSize:11, color:p.text3, marginTop:2 }}>
+                  Avancement sous le seuil d'alerte ({seuilRisque}%) ou objectif non démarré
+                </div>
+              </div>
+            </div>
+            {/* Sélecteur de seuil de risque */}
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:11, color:p.text3, fontWeight:600 }}>Seuil de risque :</span>
+              {[50,70,80].map(s => (
+                <button key={s} onClick={()=>setSeuilRisque(s)} style={{
+                  padding:'4px 10px', borderRadius:100, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'var(--font)',
+                  border:`1.5px solid ${seuilRisque===s ? 'var(--amber)' : p.border}`,
+                  background: seuilRisque===s ? 'rgba(245,158,11,0.12)' : 'transparent',
+                  color: seuilRisque===s ? 'var(--amber)' : p.text3,
+                }}>{s}%</button>
+              ))}
+            </div>
+          </div>
+
+          {objEnRisque.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:14 }}>
+              {objEnRisque.map(obj => {
+                const cat  = CATEGORIES.find(c=>c.id===obj.categorie);
+                const reel = getValeurReelle(obj) ?? obj.valeur_reelle;
+                const pct  = getPct(obj);
+                const aReel = reel !== null && reel !== undefined;
+                const ecart = aReel ? Math.round((safeNumber(reel) - safeNumber(obj.valeur_cible)) * 100) / 100 : null;
+                return (
+                  <div key={obj.id} style={{
+                    display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
+                    padding:'10px 12px', borderRadius:10,
+                    background:p.bgCard2, border:`1px solid ${p.border}`,
+                  }}>
+                    <span style={{ fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.05em',
+                      padding:'3px 8px', borderRadius:6, whiteSpace:'nowrap',
+                      background:isDark?cat?.bg:cat?.bgL, color:isDark?cat?.color:cat?.colorL }}>
+                      {cat?.label || obj.categorie}
+                    </span>
+                    <span style={{ fontSize:13, fontWeight:700, color:p.text1, flex:1, minWidth:140 }}>{obj.titre}</span>
+                    <span style={{ fontSize:12, color:p.text3 }}>
+                      Réel <b style={{ color:p.text1 }}>{aReel ? `${reel} ${obj.unite}` : '—'}</b>
+                      {' / '}Cible <b style={{ color:p.text1 }}>{obj.valeur_cible} {obj.unite}</b>
+                    </span>
+                    {ecart !== null && (
+                      <span style={{ fontSize:12, fontWeight:700, color:'var(--amber)', whiteSpace:'nowrap' }}>
+                        Écart {ecart>0?'+':''}{ecart} {obj.unite}
+                      </span>
+                    )}
+                    <span style={{ fontSize:12, fontWeight:800, color:'var(--amber)', minWidth:44, textAlign:'right' }}>{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── KPI Synthèse ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14 }} className="animate-fade-up-1">
         {[
           { label:'Score global', val:`${stats.scoreMoyen}%`, color:'blue',   sub:`${stats.total} objectifs` },
           { label:'Atteints',     val:stats.atteint,          color:'green',  sub:'Objectif ≥ 100%' },
-          { label:'En cours',     val:stats.enCours,          color:'blue',   sub:'Progression ≥ 70%' },
-          { label:'En danger',    val:stats.danger,           color:'amber',  sub:'Progression < 70%' },
+          { label:'En cours',     val:stats.enCours,          color:'blue',   sub:`Progression ≥ ${seuilRisque}%` },
+          { label:'En danger',    val:stats.danger,           color:'amber',  sub:`Progression < ${seuilRisque}%`, clickable:true },
           { label:'Non démarrés', val:stats.nonDemarre,       color:'purple', sub:'Aucune donnée' },
         ].map((k,i) => (
-          <div key={i} className={`kpi-card ${k.color}`}>
+          <div key={i} className={`kpi-card ${k.color}`}
+            onClick={k.clickable ? () => setFiltreRisque(v=>!v) : undefined}
+            style={k.clickable ? {
+              cursor:'pointer',
+              outline: filtreRisque ? '2px solid var(--amber)' : 'none',
+              outlineOffset:2,
+            } : undefined}>
             <div style={{ fontSize:11, fontWeight:700, color:p.text3, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>{k.label}</div>
             <div style={{ fontSize:28, fontWeight:900, color:p.text1, lineHeight:1 }}>{k.val}</div>
             <div style={{ fontSize:11, color:p.text4, marginTop:6 }}>{k.sub}</div>
+            {k.clickable && (
+              <div style={{ fontSize:10, fontWeight:700, color:'var(--amber)', marginTop:6 }}>
+                {filtreRisque ? '✓ Filtre actif — cliquer pour tout afficher' : 'Cliquer pour filtrer la zone de risque'}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -511,6 +669,7 @@ export default function ObjectifsQHSE() {
                         cat={cat}
                         isDark={isDark}
                         p={p}
+                        enRisque={estEnRisque(obj)}
                         onEdit={setEditing}
                         onDelete={supprimer}
                         onSaveVal={mettreAJourManuel}

@@ -1,7 +1,7 @@
 import { useTheme } from './ThemeContext';
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
-import { FileText, Download, Loader, CheckCircle, Settings, Building2, Calendar, FileDown } from 'lucide-react';
+import { FileText, Download, Loader, CheckCircle, Settings, Building2, Calendar, FileDown, Palette, Image as ImageIcon, Users } from 'lucide-react';
 import { safeMean, safeNumber, calcExpiration, diffJours } from './utils/kpi';
 import RapportAnalyseIA from './RapportAnalyseIA';
 
@@ -28,6 +28,9 @@ const statAct = (a) => {
 function buildHTML(data, opts, cfg) {
   const { accidents, actions, habs, risques, ncs, sat, qvt } = data;
   const date   = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const accent = cfg.accent || '#1E3A5F';   // couleur de charte (chrome du document)
+  const logo   = cfg.logo   || '';          // logo base64 (optionnel)
+  const synth  = !!opts.synthetique;        // mode synthèse : KPIs + alertes, sans les grandes tables
 
   const accArret   = accidents.filter(a => a.type_evenement === 'Accident avec arrêt');
   const jours      = accidents.reduce((s, a) => s + (a.jours_perdus || 0), 0);
@@ -77,7 +80,7 @@ function buildHTML(data, opts, cfg) {
   // badge retiré (helper non utilisé dans la génération PDF actuelle — ESLint cleanup).
 
   const sectionTitle = (icon, title, color) =>
-    `<h2 style="font-size:15px;font-weight:800;color:#1E3A5F;border-left:4px solid ${color};padding-left:12px;margin:28px 0 14px">${icon} ${title}</h2>`;
+    `<h2 style="font-size:15px;font-weight:800;color:${accent};border-left:4px solid ${color};padding-left:12px;margin:28px 0 14px">${icon} ${title}</h2>`;
 
   let html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
 <title>Rapport QHSE — ${cfg.entreprise || 'DEF Réunion'} — ${date}</title>
@@ -86,7 +89,7 @@ function buildHTML(data, opts, cfg) {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; font-size: 12px; line-height: 1.6; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-  th { background: #1E3A5F; color: white; padding: 8px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  th { background: ${accent}; color: white; padding: 8px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
   td { padding: 7px 12px; border-bottom: 1px solid #E2E8F0; font-size: 11px; color: #334155; }
   tr:nth-child(even) td { background: #F8FAFC; }
   .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
@@ -100,8 +103,9 @@ function buildHTML(data, opts, cfg) {
 </style></head><body>
 
 <!-- COUVERTURE -->
-<div style="min-height:240px;background:linear-gradient(135deg,#0B1120,#1E3A5F);color:white;padding:40px;border-radius:12px;margin-bottom:24px;display:flex;flex-direction:column;justify-content:space-between">
+<div style="min-height:240px;background:linear-gradient(135deg,#0B1120,${accent});color:white;padding:40px;border-radius:12px;margin-bottom:24px;display:flex;flex-direction:column;justify-content:space-between">
   <div>
+    ${logo ? `<div style="display:inline-block;background:white;padding:8px 12px;border-radius:8px;margin-bottom:16px"><img src="${logo}" alt="Logo" style="max-height:52px;max-width:180px;display:block"/></div>` : ''}
     <div style="font-size:11px;opacity:0.5;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:10px">Système de Management Intégré</div>
     <h1 style="font-size:28px;font-weight:900;margin-bottom:6px">${cfg.entreprise || 'DEF Réunion'}</h1>
     <h2 style="font-size:18px;font-weight:400;opacity:0.7">Rapport QHSE — ${cfg.typeLabel || 'Rapport mensuel'}</h2>
@@ -142,12 +146,14 @@ ${ncOuv.length > 0 ? `<div class="alert-a">📌 ${ncOuv.length} non-conformité(
   ${kpiBox('Jours perdus', jours, jours > 0 ? '#F59E0B' : '#10B981')}
   ${kpiBox('Total événements', accidents.length, '#3B82F6')}
 </div>`;
-    if (accidents.length > 0) {
-      html += `<table><thead><tr><th>Date</th><th>Type</th><th>Lieu</th><th>Description</th><th>Jours perdus</th><th>Enquête</th></tr></thead><tbody>
+    if (!synth) {
+      if (accidents.length > 0) {
+        html += `<table><thead><tr><th>Date</th><th>Type</th><th>Lieu</th><th>Description</th><th>Jours perdus</th><th>Enquête</th></tr></thead><tbody>
 ${accidents.map(a => `<tr><td>${a.date_evenement || ''}</td><td>${a.type_evenement || ''}</td><td>${a.lieu || ''}</td><td>${(a.description || '').substring(0, 60)}</td><td style="text-align:center;font-weight:${a.jours_perdus > 0 ? '700' : '400'};color:${a.jours_perdus > 0 ? '#EF4444' : '#94A3B8'}">${a.jours_perdus || 0}</td><td>${a.statut_enquete || ''}</td></tr>`).join('')}
 </tbody></table>`;
-    } else {
-      html += `<div class="alert-g">✓ Aucun événement enregistré sur la période.</div>`;
+      } else {
+        html += `<div class="alert-g">✓ Aucun événement enregistré sur la période.</div>`;
+      }
     }
   }
 
@@ -160,11 +166,13 @@ ${accidents.map(a => `<tr><td>${a.date_evenement || ''}</td><td>${a.type_eveneme
   ${kpiBox('En retard', actRetard.length, actRetard.length > 0 ? '#EF4444' : '#10B981')}
   ${kpiBox('Taux clôture', `${tauxPDCA}%`, tauxPDCA >= 70 ? '#10B981' : '#F59E0B')}
 </div>`;
-    const actAff = opts.toutesActions ? actions : [...actRetard, ...actions.filter(a => statAct(a) === 'imminent'), ...actions.filter(a => !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé') && statAct(a) === 'ok')].slice(0, 20);
-    if (actAff.length > 0) {
-      html += `<table><thead><tr><th>Domaine</th><th>Action</th><th>Pilote</th><th>Échéance</th><th>Priorité</th><th>Statut</th></tr></thead><tbody>
+    if (!synth) {
+      const actAff = opts.toutesActions ? actions : [...actRetard, ...actions.filter(a => statAct(a) === 'imminent'), ...actions.filter(a => !a.statut?.includes('Terminé') && !a.statut?.includes('Annulé') && statAct(a) === 'ok')].slice(0, 20);
+      if (actAff.length > 0) {
+        html += `<table><thead><tr><th>Domaine</th><th>Action</th><th>Pilote</th><th>Échéance</th><th>Priorité</th><th>Statut</th></tr></thead><tbody>
 ${actAff.map(a => { const st = statAct(a); return `<tr><td>${a.domaine || ''}</td><td>${(a.action || '').substring(0, 55)}</td><td>${a.pilote || ''}</td><td style="color:${st === 'retard' ? '#EF4444' : st === 'imminent' ? '#F59E0B' : '#334155'};font-weight:${st !== 'ok' ? '700' : '400'}">${a.echeance || ''}</td><td>${a.priorite?.replace(/[🔴🟠🟡🟢]/gu, '').trim() || ''}</td><td>${a.statut?.replace(/[🔴🟠🟣🟢⚪]/gu, '').trim() || ''}</td></tr>`; }).join('')}
 </tbody></table>`;
+      }
     }
   }
 
@@ -177,13 +185,15 @@ ${actAff.map(a => { const st = statAct(a); return `<tr><td>${a.domaine || ''}</t
   ${kpiBox('Périmées', habPerimees.length, habPerimees.length > 0 ? '#EF4444' : '#10B981')}
   ${kpiBox('Taux validité', `${tauxHabs}%`, tauxHabs >= 90 ? '#10B981' : '#F59E0B')}
 </div>`;
-    const habAff = opts.toutesHabs ? habs : [...habPerimees, ...habBientot];
-    if (habAff.length > 0) {
-      html += `<table><thead><tr><th>Employé</th><th>Habilitation</th><th>Date obtention</th><th>Expiration</th><th>Statut</th></tr></thead><tbody>
+    if (!synth) {
+      const habAff = opts.toutesHabs ? habs : [...habPerimees, ...habBientot];
+      if (habAff.length > 0) {
+        html += `<table><thead><tr><th>Employé</th><th>Habilitation</th><th>Date obtention</th><th>Expiration</th><th>Statut</th></tr></thead><tbody>
 ${habAff.map(h => { const st = statHab(h); const expDate = calcExpiration(h.obtention, h.validiteAns); const exp = expDate ? expDate.toLocaleDateString('fr-FR') : '—'; return `<tr><td>${h.employe || ''}</td><td>${h.domaine || ''}</td><td>${h.obtention || ''}</td><td style="color:${st === 'perime' ? '#EF4444' : st === 'bientot' ? '#F59E0B' : '#334155'};font-weight:${st !== 'valide' ? '700' : '400'}">${exp}</td><td>${st === 'perime' ? '🔴 PÉRIMÉE' : st === 'bientot' ? '🟠 Bientôt' : '🟢 Valide'}</td></tr>`; }).join('')}
 </tbody></table>`;
-    } else {
-      html += `<div class="alert-g">✓ Toutes les habilitations sont à jour.</div>`;
+      } else {
+        html += `<div class="alert-g">✓ Toutes les habilitations sont à jour.</div>`;
+      }
     }
   }
 
@@ -196,7 +206,7 @@ ${habAff.map(h => { const st = statHab(h); const expDate = calcExpiration(h.obte
   ${kpiBox('Modérés (4-8)', risqMod.length, '#F59E0B')}
   ${kpiBox('Acceptables (<4)', risqAcc.length, '#10B981')}
 </div>`;
-    if (risqCrit.length > 0) {
+    if (!synth && risqCrit.length > 0) {
       html += `<table><thead><tr><th>Unité</th><th>Danger</th><th>Risque</th><th>Gravité</th><th>Probabilité</th><th>Criticité</th><th>Action préventive</th></tr></thead><tbody>
 ${risqCrit.map(r => `<tr><td>${r.unite_travail || ''}</td><td>${r.danger || ''}</td><td>${r.risque || ''}</td><td style="text-align:center">${r.gravite || ''}</td><td style="text-align:center">${r.probabilite || ''}</td><td style="text-align:center;font-weight:900;color:#EF4444">${r.criticite || ''}</td><td>${r.action_preventive || ''}</td></tr>`).join('')}
 </tbody></table>`;
@@ -211,10 +221,12 @@ ${risqCrit.map(r => `<tr><td>${r.unite_travail || ''}</td><td>${r.danger || ''}<
   ${kpiBox('Ouvertes', ncOuv.length, ncOuv.length > 0 ? '#EF4444' : '#10B981')}
   ${kpiBox('Taux clôture', `${tauxNC}%`, tauxNC >= 70 ? '#10B981' : '#F59E0B')}
   ${kpiBox('Clôturées', ncs.filter(n => n.statut_nc === 'Clôturée').length, '#10B981')}
-</div>
-<table><thead><tr><th>Date</th><th>Processus</th><th>Type</th><th>Description</th><th>Action corrective</th><th>Statut</th></tr></thead><tbody>
+</div>`;
+    if (!synth) {
+      html += `<table><thead><tr><th>Date</th><th>Processus</th><th>Type</th><th>Description</th><th>Action corrective</th><th>Statut</th></tr></thead><tbody>
 ${ncs.map(n => `<tr><td>${n.date_nc || ''}</td><td>${n.processus || ''}</td><td>${n.type_nc || ''}</td><td>${(n.description || '').substring(0, 50)}</td><td>${(n.action_corrective || '').substring(0, 40)}</td><td>${n.statut_nc || 'Ouverte'}</td></tr>`).join('')}
 </tbody></table>`;
+    }
   }
 
   // ── Section Satisfaction ──────────────────────────────────────────────────
@@ -255,6 +267,28 @@ const SECTIONS = [
   { key: 'satisfaction', label: 'Satisfaction & QVT',         desc: 'Enquêtes clients et QVT' },
 ];
 
+// Modèles = préréglages destinataire : sections + niveau de détail + couleur d'accent.
+const MODELES = [
+  { id:'qhse',      label:'QHSE — Complet',      icon:'🛡️', desc:'Toutes les sections, détail complet',
+    accent:'#1E3A5F', synthetique:false,
+    sections:{ securite:true, pdca:true, habilitations:true, duerp:true, ncs:true, satisfaction:true },
+    options:{ toutesActions:true, toutesHabs:true } },
+  { id:'direction', label:'Direction (COMEX)',   icon:'📈', desc:'Synthèse : KPIs, alertes, sans grandes tables',
+    accent:'#4F63E7', synthetique:true,
+    sections:{ securite:true, pdca:true, habilitations:false, duerp:false, ncs:false, satisfaction:true },
+    options:{ toutesActions:false, toutesHabs:false } },
+  { id:'audit',     label:'Audit / Conformité',  icon:'🔍', desc:'NC, DUERP, habilitations, actions — détaillé',
+    accent:'#F97316', synthetique:false,
+    sections:{ securite:true, pdca:true, habilitations:true, duerp:true, ncs:true, satisfaction:false },
+    options:{ toutesActions:true, toutesHabs:true } },
+  { id:'client',    label:'Client',              icon:'⭐', desc:'Image positive : sécurité & satisfaction',
+    accent:'#10B981', synthetique:true,
+    sections:{ securite:true, pdca:false, habilitations:false, duerp:false, ncs:false, satisfaction:true },
+    options:{ toutesActions:false, toutesHabs:false } },
+];
+
+const SWATCHES = ['#1E3A5F', '#4F63E7', '#0EA5E9', '#10B981', '#F97316', '#8B5CF6', '#DC2626', '#0F172A'];
+
 export default function RapportPDF() {
   const { p } = useTheme();
   const [loading, setLoading]   = useState(false);
@@ -262,13 +296,31 @@ export default function RapportPDF() {
   const [typeRapport, setType]  = useState('mensuel');
   const [sections, setSections] = useState({ securite:true, pdca:true, habilitations:true, duerp:true, ncs:true, satisfaction:true });
   const [options, setOptions]   = useState({ toutesActions:false, toutesHabs:false });
+  const DEFAULT_CFG = { entreprise:'DEF Réunion', effectif:50, dateDebut:'', dateFin:'', accent:'#1E3A5F', logo:'', modele:'qhse', synthetique:false };
   const [cfg, setCfg]           = useState(() => {
-    try { return JSON.parse(localStorage.getItem('rapport_config') || 'null') || { entreprise:'DEF Réunion', effectif:50, dateDebut:'', dateFin:'' }; }
-    catch { return { entreprise:'DEF Réunion', effectif:50, dateDebut:'', dateFin:'' }; }
+    try { return { ...DEFAULT_CFG, ...(JSON.parse(localStorage.getItem('rapport_config') || 'null') || {}) }; }
+    catch { return { ...DEFAULT_CFG }; }
   });
   const [showCfg, setShowCfg]   = useState(false);
 
   const saveCfg = (c) => { setCfg(c); localStorage.setItem('rapport_config', JSON.stringify(c)); };
+
+  // Applique un modèle : coche les sections, règle le détail et la couleur d'accent (tout reste modifiable ensuite).
+  const applyModele = (m) => {
+    setSections({ ...m.sections });
+    setOptions({ ...m.options });
+    saveCfg({ ...cfg, accent:m.accent, modele:m.id, synthetique:m.synthetique });
+  };
+
+  // Upload du logo → base64 en localStorage. Garde-fou de taille pour ne pas saturer le stockage.
+  const onLogo = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) { alert('Logo trop lourd (max 1 Mo).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => saveCfg({ ...cfg, logo: reader.result });
+    reader.readAsDataURL(file);
+  };
 
   const generer = async () => {
     setLoading(true); setSuccess(false);
@@ -284,7 +336,7 @@ export default function RapportPDF() {
     const type = TYPES_RAPPORT.find(t => t.id === typeRapport);
     const html = buildHTML(
       { accidents:r1.data||[], actions:r2.data||[], habs:r3.data||[], risques:r4.data||[], ncs:r5.data||[], sat:r6.data||[], qvt:r7.data||[] },
-      { ...sections, ...options, periode:typeRapport, typeLabel:type?.label },
+      { ...sections, ...options, periode:typeRapport, typeLabel:type?.label, synthetique:cfg.synthetique },
       cfg
     );
     const w = window.open('', '_blank');
@@ -314,6 +366,33 @@ export default function RapportPDF() {
       {/* Analyse QHSE par IA → document Word */}
       <RapportAnalyseIA />
 
+      {/* Modèle / Destinataire — préconfigure sections, détail et couleur */}
+      <div className="glass-panel p-5">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h3 className="text-white font-bold flex items-center gap-2"><Users size={16} className="text-blue-400"/> Modèle / Destinataire</h3>
+          <span style={{fontSize:11,color:p.text4}}>Applique un jeu de sections, un niveau de détail et une couleur — modifiable ensuite</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {MODELES.map(m => {
+            const active = cfg.modele === m.id;
+            return (
+              <button key={m.id} onClick={()=>applyModele(m)}
+                style={{textAlign:'left',padding:'14px',borderRadius:12,cursor:'pointer',transition:'all 0.15s',
+                  border:`1px solid ${active?m.accent:'rgba(255,255,255,0.08)'}`,
+                  background:active?`${m.accent}1F`:'rgba(255,255,255,0.03)'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                  <span style={{fontSize:22}}>{m.icon}</span>
+                  <span style={{width:12,height:12,borderRadius:'50%',background:m.accent,border:active?'2px solid white':'none',flexShrink:0}}/>
+                </div>
+                <p style={{fontSize:13,fontWeight:700,color:active?'#fff':'#E2E8F0',marginBottom:2}}>{m.label}</p>
+                <p style={{fontSize:11,color:p.text4,lineHeight:1.4}}>{m.desc}</p>
+                {m.synthetique && <p style={{fontSize:10,color:m.accent,fontWeight:700,marginTop:6}}>Mode synthèse</p>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Paramètres entreprise */}
       {showCfg && (
         <div className="glass-panel p-5 border border-blue-500/20 animate-fade-up">
@@ -333,6 +412,47 @@ export default function RapportPDF() {
               <div><label className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Date fin</label><input type="date" value={cfg.dateFin} onChange={e=>saveCfg({...cfg,dateFin:e.target.value})} className="input-modern"/></div>
             </>}
           </div>
+
+          {/* Charte graphique */}
+          <div style={{marginTop:20,paddingTop:18,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+            <h4 className="text-white font-bold mb-3 flex items-center gap-2" style={{fontSize:14}}><Palette size={15} className="text-blue-400"/> Charte graphique</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Couleur d'accent */}
+              <div>
+                <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-2">Couleur d'accent</label>
+                <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                  <input type="color" value={cfg.accent} onChange={e=>saveCfg({...cfg,accent:e.target.value})}
+                    style={{width:44,height:36,border:'none',borderRadius:8,background:'transparent',cursor:'pointer',padding:0}}/>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                    {SWATCHES.map(c => (
+                      <button key={c} onClick={()=>saveCfg({...cfg,accent:c})} title={c}
+                        style={{width:24,height:24,borderRadius:6,background:c,cursor:'pointer',
+                          border:cfg.accent?.toLowerCase()===c.toLowerCase()?'2px solid white':'1px solid rgba(255,255,255,0.2)'}}/>
+                    ))}
+                  </div>
+                </div>
+                <p style={{fontSize:11,color:p.text4,marginTop:8}}>Couverture, titres de section et en-têtes de tableaux. Les couleurs d'alerte (rouge/vert) restent inchangées.</p>
+              </div>
+              {/* Logo */}
+              <div>
+                <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-2">Logo (couverture)</label>
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  {cfg.logo
+                    ? <div style={{background:'white',padding:'6px 10px',borderRadius:8,display:'inline-flex'}}><img src={cfg.logo} alt="Logo" style={{maxHeight:38,maxWidth:120,display:'block'}}/></div>
+                    : <div style={{width:80,height:50,border:'1px dashed rgba(255,255,255,0.2)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',color:'#64748B'}}><ImageIcon size={18}/></div>}
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    <label className="btn-secondary text-sm" style={{cursor:'pointer',margin:0}}>
+                      <ImageIcon size={14}/> {cfg.logo ? 'Changer' : 'Importer'}
+                      <input type="file" accept="image/*" onChange={onLogo} style={{display:'none'}}/>
+                    </label>
+                    {cfg.logo && <button onClick={()=>saveCfg({...cfg,logo:''})} className="btn-secondary text-sm" style={{color:'#F87171'}}>Retirer</button>}
+                  </div>
+                </div>
+                <p style={{fontSize:11,color:p.text4,marginTop:8}}>PNG/JPG, max 1 Mo. Stocké localement sur cet appareil.</p>
+              </div>
+            </div>
+          </div>
+
           <button onClick={()=>setShowCfg(false)} className="btn-secondary mt-4 text-sm">Fermer</button>
         </div>
       )}
